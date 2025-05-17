@@ -432,34 +432,44 @@ document.addEventListener("DOMContentLoaded", function () {
     hideError();
     resultsContainer.classList.add("hidden");
     statusContainer.classList.remove("hidden");
-    updateStatus("Uploading file...", 5, "Processing your file");
+    updateStatus("Uploading file...", 0, "Uploading");
     
     log(`Starting transcription with model: ${modelSelect.value}`, "success");
     
-    // Send form data
-    fetch("/upload", {
-      method: "POST",
-      body: formData,
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
+    // Send form data using XMLHttpRequest to track upload progress
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/upload");
+
+    xhr.upload.addEventListener("progress", (ev) => {
+      if (ev.lengthComputable) {
+        const percent = (ev.loaded / ev.total) * 100;
+        const scaled = (percent / 100) * 10; // scale 0-10% of overall progress
+        updateStatus(`Uploading file... (${percent.toFixed(0)}%)`, scaled);
+      }
+    });
+
+    xhr.onload = function () {
+      if (xhr.status === 200) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          log("Upload successful: " + JSON.stringify(data), "success");
+          currentTaskId = data.task_id;
+          startStatusPolling();
+        } catch (err) {
+          showError("Unexpected server response.");
         }
-        return response.json();
-      })
-      .then((data) => {
-        log("Upload successful: " + JSON.stringify(data), "success");
-        currentTaskId = data.task_id;
-        
-        // Start polling for status
-        startStatusPolling();
-      })
-      .catch((error) => {
-        log(`Error: ${error}`, "error");
-        showError(`Error uploading file: ${error.message}`);
-        submitBtn.disabled = false;
-        submitBtn.classList.remove("opacity-50", "cursor-not-allowed");
-      });
+      } else {
+        showError(`Error uploading file: ${xhr.statusText}`);
+      }
+    };
+
+    xhr.onerror = function () {
+      showError("Network error during upload.");
+      submitBtn.disabled = false;
+      submitBtn.classList.remove("opacity-50", "cursor-not-allowed");
+    };
+
+    xhr.send(formData);
   }
   
   // Start polling for transcription status
@@ -558,7 +568,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (progressCircle) {
       const offset = circumference - (progressValue / 100) * circumference;
       progressCircle.style.strokeDashoffset = offset;
-      progressPercentage.textContent = `${progressValue}%`;
+      progressPercentage.textContent = `${progressValue.toFixed(0)}%`;
     }
     
     // Hide loading spinner at 100%
