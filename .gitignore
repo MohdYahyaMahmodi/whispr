@@ -1,0 +1,4 @@
+# Ignore transcript, uploads, and model folders
+transcripts/
+uploads/
+whisper_models/

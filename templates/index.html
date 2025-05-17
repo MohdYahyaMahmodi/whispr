@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Whispr | Transcription Studio</title>
+    <!-- FontAwesome CDN -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- TailwindCSS Play CDN and custom config -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              nvidia: {
+                green: "#76B900",
+                light: "#8ED100",
+                dark: "#5E9300",
+                50: "#F0FFE0",
+                100: "#E0FFC2",
+                900: "#3A5C00",
+              },
+              dark: {
+                900: "#0F0F0F",
+                800: "#121212",
+                700: "#181818",
+                600: "#1E1E1E",
+                500: "#242424",
+                400: "#2A2A2A",
+                300: "#303030",
+                200: "#383838",
+                100: "#404040",
+                50: "#484848",
+              },
+            },
+            fontFamily: {
+              mont: ["Montserrat", "sans-serif"],
+              plex: ["IBM Plex Sans", "sans-serif"],
+              mono: ["IBM Plex Mono", "monospace"],
+              anton: ["Anton", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      /* Only necessary custom styles that can't be easily done with Tailwind */
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0;
+        }
+      }
+
+      .blink {
+        animation: blink 1s step-end infinite;
+      }
+
+      @keyframes equalize {
+        0% {
+          height: 60%;
+        }
+        4% {
+          height: 50%;
+        }
+        8% {
+          height: 40%;
+        }
+        12% {
+          height: 30%;
+        }
+        16% {
+          height: 20%;
+        }
+        20% {
+          height: 30%;
+        }
+        24% {
+          height: 40%;
+        }
+        28% {
+          height: 10%;
+        }
+        32% {
+          height: 40%;
+        }
+        36% {
+          height: 60%;
+        }
+        40% {
+          height: 80%;
+        }
+        44% {
+          height: 70%;
+        }
+        48% {
+          height: 30%;
+        }
+        52% {
+          height: 50%;
+        }
+        56% {
+          height: 60%;
+        }
+        60% {
+          height: 70%;
+        }
+        64% {
+          height: 80%;
+        }
+        68% {
+          height: 70%;
+        }
+        72% {
+          height: 60%;
+        }
+        76% {
+          height: 50%;
+        }
+        80% {
+          height: 60%;
+        }
+        84% {
+          height: 70%;
+        }
+        88% {
+          height: 80%;
+        }
+        92% {
+          height: 70%;
+        }
+        96% {
+          height: 60%;
+        }
+        100% {
+          height: 50%;
+        }
+      }
+
+      /* Progress ring */
+      .progress-ring {
+        transform: rotate(-90deg);
+      }
+
+      .progress-ring__circle {
+        stroke: #303030;
+        fill: transparent;
+      }
+
+      .progress-ring__circle-progress {
+        stroke: #76b900;
+        fill: transparent;
+        stroke-linecap: round;
+        transition: stroke-dashoffset 0.3s ease;
+      }
+    </style>
+  </head>
+
+  <body class="bg-dark-800 text-gray-200 font-plex">
+    <!-- Navbar -->
+    <nav class="bg-dark-900 sticky top-0 z-50 shadow-md">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-16">
+          <!-- Logo -->
+          <a href="#" class="flex items-center space-x-2">
+            <div class="flex space-x-1 items-center">
+              <div class="flex h-6 gap-[2px]">
+                <div class="w-[3px] bg-nvidia-green h-3 rounded-sm"></div>
+                <div class="w-[3px] bg-nvidia-green h-5 rounded-sm"></div>
+                <div class="w-[3px] bg-nvidia-green h-2 rounded-sm"></div>
+                <div class="w-[3px] bg-nvidia-green h-4 rounded-sm"></div>
+                <div class="w-[3px] bg-nvidia-green h-3 rounded-sm"></div>
+              </div>
+              <span class="text-xl font-bold text-white"
+                >Whispr<span class="text-nvidia-green font-mono blink"
+                  >_</span
+                ></span
+              >
+            </div>
+          </a>
+
+          <!-- Desktop Nav -->
+          <div class="hidden md:flex items-center space-x-8">
+            <a
+              href="#studio"
+              class="text-sm font-medium text-gray-300 hover:text-nvidia-green transition-colors"
+              >Studio</a
+            >
+            <a
+              href="#models"
+              class="text-sm font-medium text-gray-300 hover:text-nvidia-green transition-colors"
+              >Models</a
+            >
+            <a
+              href="#requirements"
+              class="text-sm font-medium text-gray-300 hover:text-nvidia-green transition-colors"
+              >Requirements</a
+            >
+            <a
+              href="#faq"
+              class="text-sm font-medium text-gray-300 hover:text-nvidia-green transition-colors"
+              >FAQ</a
+            >
+            <div
+              id="device-indicator"
+              class="ml-4 px-3 py-1 text-xs font-medium rounded-full"
+            ></div>
+          </div>
+
+          <!-- Mobile Menu Button -->
+          <div class="md:hidden">
+            <button
+              id="mobile-menu-button"
+              class="text-gray-300 hover:text-nvidia-green focus:outline-none"
+            >
+              <svg
+                class="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile Menu -->
+      <div
+        id="mobile-menu"
+        class="md:hidden hidden bg-dark-800 border-t border-dark-400"
+      >
+        <div class="container mx-auto py-2 space-y-1 px-4">
+          <a
+            href="#studio"
+            class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:bg-dark-500 hover:text-white"
+            >Studio</a
+          >
+          <a
+            href="#models"
+            class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:bg-dark-500 hover:text-white"
+            >Models</a
+          >
+          <a
+            href="#requirements"
+            class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:bg-dark-500 hover:text-white"
+            >Requirements</a
+          >
+          <a
+            href="#faq"
+            class="block px-3 py-2 rounded-md text-base font-medium text-gray-300 hover:bg-dark-500 hover:text-white"
+            >FAQ</a
+          >
+        </div>
+      </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="bg-dark-900 py-16 md:py-20 border-b border-dark-500">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="max-w-4xl mx-auto text-center">
+          <h1
+            class="font-mont text-4xl sm:text-5xl md:text-6xl font-bold leading-tight mb-4 text-white"
+          >
+            TRANSCRIBE ANYTHING<span class="text-nvidia-green font-mono blink"
+              >_</span
+            >
+          </h1>
+          <p class="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mb-10">
+            Transform audio and video to text with precision using OpenAI's
+            Whisper. Fast, accurate, and completely private with local
+            processing.
+          </p>
+          <div
+            class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4"
+          >
+            <a
+              href="#studio"
+              class="px-8 py-3 rounded-lg font-medium text-white bg-nvidia-green hover:bg-nvidia-light transition-all duration-300 shadow-lg shadow-nvidia-900/20 transform hover:-translate-y-1 flex items-center justify-center"
+            >
+              <i class="fas fa-microphone-alt mr-2"></i>Start Transcribing
+            </a>
+            <a
+              href="#requirements"
+              class="px-8 py-3 rounded-lg font-medium bg-dark-400 text-white hover:bg-dark-300 transition-all duration-300 flex items-center justify-center"
+            >
+              <i class="fas fa-list-check mr-2"></i>View Requirements
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Studio Section -->
+    <section id="studio" class="py-16 bg-dark-800">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+          <span
+            class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-nvidia-900 text-nvidia-green mb-2"
+            >STUDIO</span
+          >
+          <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">
+            Transcription Studio
+          </h2>
+          <p class="text-gray-400 max-w-2xl mx-auto">
+            Upload any audio or video file to convert it to text in minutes
+          </p>
+        </div>
+
+        <div class="max-w-4xl mx-auto">
+          <!-- Upload Form Card -->
+          <div
+            class="bg-dark-600 rounded-xl shadow-xl p-8 mb-8 border border-dark-400"
+          >
+            <form id="upload-form" class="space-y-8">
+              <!-- File Upload Section -->
+              <div>
+                <label
+                  for="file"
+                  class="block text-sm font-medium text-gray-200 mb-3"
+                  >Upload Media File</label
+                >
+                <div
+                  id="drop-area"
+                  class="border-2 border-dashed border-dark-300 rounded-lg p-8 cursor-pointer hover:border-nvidia-green transition-colors"
+                >
+                  <input
+                    id="file"
+                    name="file"
+                    type="file"
+                    class="hidden"
+                    accept=".mp3,.wav,.mp4,.avi,.mov,.flac,.ogg,.m4a"
+                    required
+                  />
+
+                  <!-- File Prompt View -->
+                  <div id="file-prompt" class="text-center">
+                    <div class="text-nvidia-green text-5xl mb-4">
+                      <i class="fas fa-cloud-arrow-up"></i>
+                    </div>
+                    <h4 class="text-xl font-semibold text-white mb-2">
+                      Drag and drop your file here
+                    </h4>
+                    <p class="text-gray-400 mb-4">or</p>
+                    <button
+                      type="button"
+                      onclick="document.getElementById('file').click()"
+                      class="px-6 py-3 bg-nvidia-green hover:bg-nvidia-light text-white rounded-lg font-medium transition-all duration-300 shadow-lg shadow-nvidia-900/20"
+                    >
+                      <i class="fas fa-folder-open mr-2"></i> Browse Files
+                    </button>
+                    <p class="text-sm text-gray-500 mt-4">
+                      Supports MP3, WAV, MP4, AVI, MOV, FLAC, OGG, M4A
+                    </p>
+                  </div>
+
+                  <!-- File Selected View -->
+                  <div id="file-info" class="hidden text-center">
+                    <div
+                      class="bg-nvidia-900/20 p-5 rounded-full inline-block mb-4"
+                    >
+                      <i
+                        class="fas fa-file-audio text-nvidia-green text-3xl"
+                      ></i>
+                    </div>
+                    <h4
+                      id="filename"
+                      class="text-lg font-semibold text-white mb-1"
+                    ></h4>
+                    <p id="filesize" class="text-sm text-gray-400"></p>
+                    <button
+                      type="button"
+                      id="remove-file"
+                      class="mt-4 text-sm text-red-500 hover:text-red-400 px-4 py-2 border border-red-900/30 rounded-lg hover:bg-red-900/10 transition-colors"
+                    >
+                      <i class="fas fa-times mr-1"></i> Remove File
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Model Selection -->
+              <div>
+                <label
+                  for="model"
+                  class="block text-sm font-medium text-gray-200 mb-3"
+                  >Select Model</label
+                >
+                <div class="relative">
+                  <select
+                    id="model"
+                    name="model"
+                    class="w-full bg-dark-700 border border-dark-300 rounded-lg py-3 px-4 pr-10 text-white appearance-none focus:outline-none focus:border-nvidia-green focus:ring focus:ring-nvidia-green/20"
+                  >
+                    <option value="tiny">Tiny - Fastest (75MB)</option>
+                    <option value="base" selected>
+                      Base - Fast with good accuracy (142MB)
+                    </option>
+                    <option value="small">
+                      Small - Balanced speed and accuracy (466MB)
+                    </option>
+                    <option value="medium">
+                      Medium - High accuracy (1.5GB)
+                    </option>
+                    <option value="large">
+                      Large - Highest accuracy (2.9GB)
+                    </option>
+                  </select>
+                  <div
+                    class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400"
+                  >
+                    <i class="fas fa-chevron-down"></i>
+                  </div>
+                </div>
+                <p id="model-info" class="mt-2 text-sm text-gray-400">
+                  Base model offers good balance between speed and accuracy with
+                  a smaller download size.
+                </p>
+              </div>
+
+              <!-- Advanced Options -->
+              <div class="border border-dark-300 rounded-lg p-5 bg-dark-700/50">
+                <div class="flex items-center justify-between mb-4">
+                  <h4 class="font-semibold text-white">Advanced Options</h4>
+                  <button
+                    type="button"
+                    id="toggle-options"
+                    class="text-sm text-nvidia-green hover:text-nvidia-light"
+                  >
+                    <i class="fas fa-cog mr-1"></i> Show options
+                  </button>
+                </div>
+                <div id="options-panel" class="hidden space-y-4">
+                  <div class="flex items-center justify-between">
+                    <label for="multilingual" class="text-sm text-gray-300"
+                      >Multilingual Detection</label
+                    >
+                    <label class="relative inline-block w-12 h-6">
+                      <input
+                        type="checkbox"
+                        id="multilingual"
+                        class="opacity-0 w-0 h-0"
+                      />
+                      <span
+                        class="absolute cursor-pointer inset-0 bg-dark-400 rounded-full transition-all duration-300 before:content-[''] before:absolute before:h-4 before:w-4 before:left-1 before:bottom-1 before:bg-white before:rounded-full before:transition-all before:duration-300 peer-checked:bg-nvidia-green peer-checked:before:translate-x-6"
+                      ></span>
+                    </label>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <label for="word-timestamps" class="text-sm text-gray-300"
+                      >Word-level Timestamps</label
+                    >
+                    <label class="relative inline-block w-12 h-6">
+                      <input
+                        type="checkbox"
+                        id="word-timestamps"
+                        class="opacity-0 w-0 h-0 peer"
+                      />
+                      <span
+                        class="absolute cursor-pointer inset-0 bg-dark-400 rounded-full transition-all duration-300 before:content-[''] before:absolute before:h-4 before:w-4 before:left-1 before:bottom-1 before:bg-white before:rounded-full before:transition-all before:duration-300 peer-checked:bg-nvidia-green peer-checked:before:translate-x-6"
+                      ></span>
+                    </label>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <label for="speaker-detection" class="text-sm text-gray-300"
+                      >Speaker Detection (Experimental)</label
+                    >
+                    <label class="relative inline-block w-12 h-6">
+                      <input
+                        type="checkbox"
+                        id="speaker-detection"
+                        class="opacity-0 w-0 h-0 peer"
+                      />
+                      <span
+                        class="absolute cursor-pointer inset-0 bg-dark-400 rounded-full transition-all duration-300 before:content-[''] before:absolute before:h-4 before:w-4 before:left-1 before:bottom-1 before:bg-white before:rounded-full before:transition-all before:duration-300 peer-checked:bg-nvidia-green peer-checked:before:translate-x-6"
+                      ></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Submit Button -->
+              <div class="flex justify-center">
+                <button
+                  type="submit"
+                  id="submit-btn"
+                  class="w-full sm:w-auto px-10 py-4 bg-nvidia-green hover:bg-nvidia-light text-white rounded-lg font-medium transition-all duration-300 flex items-center justify-center shadow-lg shadow-nvidia-900/20"
+                >
+                  <i class="fas fa-wand-magic-sparkles mr-2"></i>
+                  Start Transcription
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Progress Section -->
+          <div
+            id="status-container"
+            class="bg-dark-600 rounded-xl shadow-xl p-8 mb-8 border border-dark-400 hidden"
+          >
+            <div class="flex items-center justify-between mb-6">
+              <h3 class="text-xl font-bold text-white">Processing Your File</h3>
+              <div
+                id="device-type"
+                class="text-sm font-medium px-3 py-1 rounded-full"
+              ></div>
+            </div>
+            <div id="status-content" class="space-y-6">
+              <div class="flex items-center">
+                <div class="relative mr-4">
+                  <svg
+                    class="progress-ring"
+                    width="60"
+                    height="60"
+                    viewBox="0 0 120 120"
+                  >
+                    <circle
+                      class="progress-ring__circle"
+                      stroke-width="8"
+                      stroke-dasharray="314"
+                      stroke-dashoffset="0"
+                      r="50"
+                      cx="60"
+                      cy="60"
+                    />
+                    <circle
+                      id="progress-circle"
+                      class="progress-ring__circle-progress"
+                      stroke-width="8"
+                      stroke-dasharray="314"
+                      stroke-dashoffset="314"
+                      r="50"
+                      cx="60"
+                      cy="60"
+                    />
+                  </svg>
+                  <div
+                    class="absolute top-0 left-0 w-full h-full flex items-center justify-center"
+                  >
+                    <span
+                      id="progress-percentage-circle"
+                      class="text-sm font-semibold text-white"
+                      >0%</span
+                    >
+                  </div>
+                </div>
+                <div class="flex-1">
+                  <div
+                    id="status-message"
+                    class="text-white font-medium mb-1"
+                  ></div>
+                  <div class="h-2 bg-dark-400 rounded-full overflow-hidden">
+                    <div
+                      id="progress-bar"
+                      class="h-full bg-nvidia-green transition-all duration-300"
+                      style="width: 0%"
+                    ></div>
+                  </div>
+                  <div
+                    id="download-progress-info"
+                    class="mt-1 text-xs text-gray-400 hidden"
+                  >
+                    <span id="download-size">0 MB</span> /
+                    <span id="total-size">0 MB</span>
+                  </div>
+                </div>
+              </div>
+
+              <div id="loading-spinner" class="flex justify-center py-4">
+                <div class="flex h-10 gap-[3px] items-end">
+                  <div
+                    class="w-[3px] bg-nvidia-green h-4 rounded-sm"
+                    style="animation: equalize 1.5s infinite"
+                  ></div>
+                  <div
+                    class="w-[3px] bg-nvidia-green h-8 rounded-sm"
+                    style="animation: equalize 1.5s infinite 0.2s"
+                  ></div>
+                  <div
+                    class="w-[3px] bg-nvidia-green h-6 rounded-sm"
+                    style="animation: equalize 1.5s infinite 0.4s"
+                  ></div>
+                  <div
+                    class="w-[3px] bg-nvidia-green h-3 rounded-sm"
+                    style="animation: equalize 1.5s infinite 0.6s"
+                  ></div>
+                  <div
+                    class="w-[3px] bg-nvidia-green h-7 rounded-sm"
+                    style="animation: equalize 1.5s infinite 0.8s"
+                  ></div>
+                  <div
+                    class="w-[3px] bg-nvidia-green h-5 rounded-sm"
+                    style="animation: equalize 1.5s infinite 1s"
+                  ></div>
+                  <div
+                    class="w-[3px] bg-nvidia-green h-9 rounded-sm"
+                    style="animation: equalize 1.5s infinite 1.2s"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Results Section -->
+          <div
+            id="results-container"
+            class="bg-dark-600 rounded-xl shadow-xl p-8 mb-8 border border-dark-400 hidden"
+          >
+            <h3 class="text-xl font-bold text-white mb-6">
+              <i class="fas fa-check-circle text-nvidia-green mr-2"></i>
+              Transcription Complete
+            </h3>
+            <div class="mb-8">
+              <div class="flex justify-between items-center mb-3">
+                <label
+                  for="transcript"
+                  class="block text-sm font-medium text-gray-200"
+                  >Transcript</label
+                >
+                <button
+                  id="copy-transcript"
+                  class="text-sm text-nvidia-green hover:text-nvidia-light flex items-center"
+                >
+                  <i class="fas fa-clipboard mr-1"></i> Copy to clipboard
+                </button>
+              </div>
+              <textarea
+                id="transcript"
+                class="w-full h-64 p-4 bg-dark-700 border border-dark-300 rounded-lg focus:border-nvidia-green focus:ring focus:ring-nvidia-green/20 text-gray-200 font-mono text-sm"
+                readonly
+              ></textarea>
+              <div
+                id="copy-success-message"
+                class="hidden mt-2 text-sm text-nvidia-green"
+              >
+                <i class="fas fa-check-circle mr-1"></i> Copied to clipboard!
+              </div>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+              <button
+                id="download-txt"
+                class="flex-1 px-6 py-3 bg-dark-400 hover:bg-dark-300 text-white rounded-lg font-medium transition-all duration-300 flex items-center justify-center"
+              >
+                <i class="fas fa-file-alt mr-2"></i>
+                Download as .txt
+              </button>
+              <button
+                id="download-srt"
+                class="flex-1 px-6 py-3 bg-nvidia-green hover:bg-nvidia-light text-white rounded-lg font-medium transition-all duration-300 flex items-center justify-center shadow-lg shadow-nvidia-900/20"
+              >
+                <i class="fas fa-closed-captioning mr-2"></i>
+                Download as .srt
+              </button>
+              <button
+                id="new-transcription"
+                class="flex-1 px-6 py-3 bg-dark-500 hover:bg-dark-400 text-white rounded-lg font-medium transition-all duration-300 flex items-center justify-center"
+              >
+                <i class="fas fa-redo mr-2"></i>
+                New Transcription
+              </button>
+            </div>
+          </div>
+
+          <!-- Error Section -->
+          <div
+            id="error-container"
+            class="bg-dark-600 rounded-xl shadow-xl p-8 mb-8 border border-dark-400 hidden"
+          >
+            <div
+              class="bg-red-900/20 border-l-4 border-red-600 p-4 rounded-r-lg"
+            >
+              <div class="flex">
+                <div class="flex-shrink-0">
+                  <i class="fas fa-exclamation-circle text-red-500 text-xl"></i>
+                </div>
+                <div class="ml-3">
+                  <h3 class="text-lg font-medium text-red-400">Error</h3>
+                  <div
+                    id="error-message"
+                    class="mt-2 text-sm text-red-300"
+                  ></div>
+                  <div class="mt-4">
+                    <button
+                      id="try-again"
+                      class="inline-flex items-center px-4 py-2 bg-red-900/30 hover:bg-red-900/50 text-red-300 border border-red-600/30 rounded-md text-sm font-medium focus:outline-none"
+                    >
+                      <i class="fas fa-redo mr-1"></i> Try Again
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="py-16 bg-dark-700 border-t border-dark-500">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+          <span
+            class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-nvidia-900 text-nvidia-green mb-2"
+            >FEATURES</span
+          >
+          <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">
+            Key Features
+          </h2>
+          <p class="text-gray-400 max-w-2xl mx-auto">
+            Powerful speech recognition with privacy and flexibility
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Feature 1 -->
+          <div
+            class="bg-dark-600 rounded-xl shadow-md p-6 border border-dark-400 hover:border-nvidia-green transition-all duration-300 hover:-translate-y-1"
+          >
+            <div
+              class="w-12 h-12 bg-nvidia-900/30 rounded-full text-nvidia-green flex items-center justify-center mb-4"
+            >
+              <i class="fas fa-lock text-xl"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-2">100% Private</h3>
+            <p class="text-gray-400">
+              All processing happens locally on your device. Your audio files
+              never leave your computer, ensuring complete privacy.
+            </p>
+          </div>
+
+          <!-- Feature 2 -->
+          <div
+            class="bg-dark-600 rounded-xl shadow-md p-6 border border-dark-400 hover:border-nvidia-green transition-all duration-300 hover:-translate-y-1"
+          >
+            <div
+              class="w-12 h-12 bg-nvidia-900/30 rounded-full text-nvidia-green flex items-center justify-center mb-4"
+            >
+              <i class="fas fa-gauge-high text-xl"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-2">
+              GPU Accelerated
+            </h3>
+            <p class="text-gray-400">
+              Automatically leverages your GPU for faster transcription speeds
+              compared to CPU-only solutions.
+            </p>
+          </div>
+
+          <!-- Feature 3 -->
+          <div
+            class="bg-dark-600 rounded-xl shadow-md p-6 border border-dark-400 hover:border-nvidia-green transition-all duration-300 hover:-translate-y-1"
+          >
+            <div
+              class="w-12 h-12 bg-nvidia-900/30 rounded-full text-nvidia-green flex items-center justify-center mb-4"
+            >
+              <i class="fas fa-language text-xl"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-2">Multilingual</h3>
+            <p class="text-gray-400">
+              Accurately transcribe content in dozens of languages with support
+              for various accents and dialects.
+            </p>
+          </div>
+
+          <!-- Feature 4 -->
+          <div
+            class="bg-dark-600 rounded-xl shadow-md p-6 border border-dark-400 hover:border-nvidia-green transition-all duration-300 hover:-translate-y-1"
+          >
+            <div
+              class="w-12 h-12 bg-nvidia-900/30 rounded-full text-nvidia-green flex items-center justify-center mb-4"
+            >
+              <i class="fas fa-sliders text-xl"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-2">Model Options</h3>
+            <p class="text-gray-400">
+              Choose from five model sizes to balance speed and accuracy based
+              on your specific needs.
+            </p>
+          </div>
+
+          <!-- Feature 5 -->
+          <div
+            class="bg-dark-600 rounded-xl shadow-md p-6 border border-dark-400 hover:border-nvidia-green transition-all duration-300 hover:-translate-y-1"
+          >
+            <div
+              class="w-12 h-12 bg-nvidia-900/30 rounded-full text-nvidia-green flex items-center justify-center mb-4"
+            >
+              <i class="fas fa-file-audio text-xl"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-2">
+              Multiple Formats
+            </h3>
+            <p class="text-gray-400">
+              Support for all major audio and video formats: MP3, WAV, MP4, AVI,
+              MOV, FLAC, OGG, and M4A.
+            </p>
+          </div>
+
+          <!-- Feature 6 -->
+          <div
+            class="bg-dark-600 rounded-xl shadow-md p-6 border border-dark-400 hover:border-nvidia-green transition-all duration-300 hover:-translate-y-1"
+          >
+            <div
+              class="w-12 h-12 bg-nvidia-900/30 rounded-full text-nvidia-green flex items-center justify-center mb-4"
+            >
+              <i class="fas fa-closed-captioning text-xl"></i>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-2">SRT Export</h3>
+            <p class="text-gray-400">
+              Export precisely timed subtitles in SRT format for video
+              production and accessibility.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Models Section -->
+    <section id="models" class="py-16 bg-dark-800 border-t border-dark-500">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+          <span
+            class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-nvidia-900 text-nvidia-green mb-2"
+            >MODELS</span
+          >
+          <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">
+            Model Comparison
+          </h2>
+          <p class="text-gray-400 max-w-2xl mx-auto">
+            Choose the right Whisper model for your transcription needs
+          </p>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="min-w-full">
+            <thead class="bg-dark-600">
+              <tr>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                >
+                  Model
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                >
+                  Size
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                >
+                  Speed
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                >
+                  Accuracy
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                >
+                  Use Case
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-dark-400 bg-dark-700">
+              <tr class="hover:bg-dark-600">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="font-medium text-white">Tiny</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  75 MB
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex space-x-1">
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex space-x-1">
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  Quick drafts, low resource systems
+                </td>
+              </tr>
+              <tr class="hover:bg-dark-600">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="font-medium text-white">Base</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  142 MB
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex space-x-1">
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex space-x-1">
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  Everyday transcription, good for most users
+                </td>
+              </tr>
+              <tr class="hover:bg-dark-600">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="font-medium text-white">Small</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  466 MB
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex space-x-1">
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex space-x-1">
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  Balance of speed and accuracy
+                </td>
+              </tr>
+              <tr class="hover:bg-dark-600">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="font-medium text-white">Medium</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  1.5 GB
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex space-x-1">
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex space-x-1">
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  Professional transcription, high accuracy
+                </td>
+              </tr>
+              <tr class="hover:bg-dark-600">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="font-medium text-white">Large</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  2.9 GB
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex space-x-1">
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex space-x-1">
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  Critical transcription where every word matters
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Requirements Section -->
+    <section
+      id="requirements"
+      class="py-16 bg-dark-700 border-t border-dark-500"
+    >
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+          <span
+            class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-nvidia-900 text-nvidia-green mb-2"
+            >REQUIREMENTS</span
+          >
+          <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">
+            System Requirements
+          </h2>
+          <p class="text-gray-400 max-w-2xl mx-auto">
+            Check if your system meets the requirements for each model
+          </p>
+
+          <!-- Hardware Status Badge -->
+          <div
+            id="hardware-status"
+            class="mt-6 inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-dark-500 text-gray-300"
+          >
+            <!-- Will be filled by JS -->
+            Checking system capabilities...
+          </div>
+        </div>
+
+        <div
+          class="bg-dark-600 rounded-xl shadow-xl overflow-hidden mb-12 border border-dark-400"
+        >
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-dark-400">
+              <thead class="bg-dark-700">
+                <tr>
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                  >
+                    Model
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                  >
+                    Size
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                  >
+                    CPU
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                  >
+                    RAM
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                  >
+                    GPU
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                  >
+                    VRAM
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
+                  >
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="bg-dark-600 divide-y divide-dark-400">
+                <!-- Tiny Model -->
+                <tr class="hover:bg-dark-500">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="font-medium text-white">Tiny</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    75 MB
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    Any modern CPU
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    2 GB
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    Not required
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    ~1 GB
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span
+                      id="model-status-tiny"
+                      class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-dark-400 text-gray-300"
+                    >
+                      Checking...
+                    </span>
+                  </td>
+                </tr>
+
+                <!-- Base Model -->
+                <tr class="hover:bg-dark-500">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="font-medium text-white">Base</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    142 MB
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    4+ cores recommended
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    4 GB
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    Helpful but not required
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    ~1 GB
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span
+                      id="model-status-base"
+                      class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-dark-400 text-gray-300"
+                    >
+                      Checking...
+                    </span>
+                  </td>
+                </tr>
+
+                <!-- Small Model -->
+                <tr class="hover:bg-dark-500">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="font-medium text-white">Small</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    466 MB
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    6+ cores recommended
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    6 GB
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    Recommended
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    ~2 GB
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span
+                      id="model-status-small"
+                      class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-dark-400 text-gray-300"
+                    >
+                      Checking...
+                    </span>
+                  </td>
+                </tr>
+
+                <!-- Medium Model -->
+                <tr class="hover:bg-dark-500">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="font-medium text-white">Medium</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    1.5 GB
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    High-end multi-core
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    8 GB
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    Strongly recommended
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    ~5 GB
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span
+                      id="model-status-medium"
+                      class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-dark-400 text-gray-300"
+                    >
+                      Checking...
+                    </span>
+                  </td>
+                </tr>
+
+                <!-- Large Model -->
+                <tr class="hover:bg-dark-500">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="font-medium text-white">Large</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    2.9 GB
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    Very high-end multi-core
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    16 GB
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    Required
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    ~10 GB
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span
+                      id="model-status-large"
+                      class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-dark-400 text-gray-300"
+                    >
+                      Checking...
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <!-- Hardware Info Card -->
+          <div
+            class="bg-dark-600 rounded-xl shadow-xl p-6 border border-dark-400"
+          >
+            <h3 class="text-xl font-bold text-white mb-6">
+              Hardware Detection
+            </h3>
+            <div id="hardware-details" class="space-y-6">
+              <!-- CPU -->
+              <div class="flex items-center">
+                <div
+                  class="w-12 h-12 rounded-full bg-nvidia-900/30 flex items-center justify-center mr-4"
+                >
+                  <i class="fas fa-microchip text-nvidia-green text-xl"></i>
+                </div>
+                <div>
+                  <div class="text-sm text-gray-400">CPU</div>
+                  <div id="cpu-info" class="font-medium text-white">
+                    Checking...
+                  </div>
+                </div>
+              </div>
+
+              <!-- RAM -->
+              <div class="flex items-center">
+                <div
+                  class="w-12 h-12 rounded-full bg-nvidia-900/30 flex items-center justify-center mr-4"
+                >
+                  <i class="fas fa-memory text-nvidia-green text-xl"></i>
+                </div>
+                <div>
+                  <div class="text-sm text-gray-400">RAM</div>
+                  <div id="ram-info" class="font-medium text-white">
+                    Checking...
+                  </div>
+                </div>
+              </div>
+
+              <!-- GPU -->
+              <div class="flex items-center">
+                <div
+                  class="w-12 h-12 rounded-full bg-nvidia-900/30 flex items-center justify-center mr-4"
+                >
+                  <i class="fas fa-desktop text-nvidia-green text-xl"></i>
+                </div>
+                <div>
+                  <div class="text-sm text-gray-400">GPU</div>
+                  <div id="gpu-info" class="font-medium text-white">
+                    Checking...
+                  </div>
+                </div>
+              </div>
+
+              <!-- VRAM -->
+              <div class="flex items-center">
+                <div
+                  class="w-12 h-12 rounded-full bg-nvidia-900/30 flex items-center justify-center mr-4"
+                >
+                  <i class="fas fa-tv text-nvidia-green text-xl"></i>
+                </div>
+                <div>
+                  <div class="text-sm text-gray-400">VRAM</div>
+                  <div id="vram-info" class="font-medium text-white">
+                    Checking...
+                  </div>
+                </div>
+              </div>
+
+              <!-- PyTorch -->
+              <div class="flex items-center">
+                <div
+                  class="w-12 h-12 rounded-full bg-nvidia-900/30 flex items-center justify-center mr-4"
+                >
+                  <i class="fas fa-fire text-nvidia-green text-xl"></i>
+                </div>
+                <div>
+                  <div class="text-sm text-gray-400">PyTorch</div>
+                  <div id="pytorch-version" class="font-medium text-white">
+                    Checking...
+                  </div>
+                </div>
+              </div>
+
+              <!-- CUDA -->
+              <div class="flex items-center">
+                <div
+                  class="w-12 h-12 rounded-full bg-nvidia-900/30 flex items-center justify-center mr-4"
+                >
+                  <i class="fas fa-rocket text-nvidia-green text-xl"></i>
+                </div>
+                <div>
+                  <div class="text-sm text-gray-400">CUDA</div>
+                  <div id="cuda-version" class="font-medium text-white">
+                    Checking...
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- GPU Troubleshooting -->
+          <div
+            id="gpu-troubleshooting"
+            class="bg-dark-600 rounded-xl shadow-xl p-6 border border-dark-400 hidden"
+          >
+            <h3 class="text-xl font-bold text-white mb-6">
+              GPU Troubleshooting
+            </h3>
+            <div class="text-gray-300">
+              <p class="mb-4">
+                No GPU detected or GPU acceleration is not enabled. Follow these
+                steps to enable GPU acceleration:
+              </p>
+              <ol class="list-decimal list-inside space-y-4 mb-6">
+                <li>
+                  Update your NVIDIA drivers to the latest version from the
+                  <a
+                    href="https://www.nvidia.com/Download/index.aspx"
+                    target="_blank"
+                    class="text-nvidia-green hover:text-nvidia-light"
+                    >NVIDIA website</a
+                  >
+                </li>
+                <li>
+                  Install PyTorch with CUDA support using this command:
+                  <div
+                    class="bg-dark-800 p-3 rounded-lg font-mono text-sm mt-2 overflow-x-auto"
+                  >
+                    pip install torch torchvision torchaudio --index-url
+                    https://download.pytorch.org/whl/cu118
+                  </div>
+                </li>
+                <li>
+                  Check if CUDA is properly installed by running:
+                  <div
+                    class="bg-dark-800 p-3 rounded-lg font-mono text-sm mt-2"
+                  >
+                    nvidia-smi
+                  </div>
+                </li>
+                <li>
+                  Restart your computer after installing or updating drivers
+                </li>
+              </ol>
+              <div
+                class="bg-nvidia-900/10 border-l-4 border-nvidia-green p-4 rounded-r-lg"
+              >
+                <div class="flex">
+                  <div class="flex-shrink-0">
+                    <i class="fas fa-info-circle text-nvidia-green"></i>
+                  </div>
+                  <div class="ml-3">
+                    <p class="text-sm text-gray-300">
+                      Even without GPU acceleration, Whispr will still work
+                      using your CPU, though transcription will be slower. For
+                      the best experience, we recommend using the "tiny" or
+                      "base" models for CPU-only mode.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="py-16 bg-dark-800 border-t border-dark-500">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+          <span
+            class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-nvidia-900 text-nvidia-green mb-2"
+            >FAQ</span
+          >
+          <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">
+            Frequently Asked Questions
+          </h2>
+          <p class="text-gray-400 max-w-2xl mx-auto">
+            Get answers to common questions about Whispr
+          </p>
+        </div>
+
+        <div class="max-w-3xl mx-auto space-y-4">
+          <!-- FAQ 1 -->
+          <div
+            class="bg-dark-600 rounded-xl border border-dark-400 overflow-hidden"
+          >
+            <div
+              class="accordion-header cursor-pointer p-5 flex justify-between items-center"
+            >
+              <h3 class="text-lg font-semibold text-white">What is Whisper?</h3>
+              <i
+                class="fas fa-chevron-down text-gray-400 transition-transform"
+              ></i>
+            </div>
+            <div class="accordion-content bg-dark-700">
+              <div class="p-5 border-t border-dark-400">
+                <p class="text-gray-300">
+                  Whisper is an automatic speech recognition (ASR) system
+                  developed by OpenAI. It's trained on a diverse dataset of
+                  multilingual and multitask supervised data from the web. This
+                  robust training enables Whisper to recognize speech across
+                  many languages and accents, even with background noise or
+                  technical language. Whispr leverages Whisper's technology
+                  while running it entirely on your local machine, ensuring your
+                  audio data never leaves your computer.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- FAQ 2 -->
+          <div
+            class="bg-dark-600 rounded-xl border border-dark-400 overflow-hidden"
+          >
+            <div
+              class="accordion-header cursor-pointer p-5 flex justify-between items-center"
+            >
+              <h3 class="text-lg font-semibold text-white">
+                Which model should I choose?
+              </h3>
+              <i
+                class="fas fa-chevron-down text-gray-400 transition-transform"
+              ></i>
+            </div>
+            <div class="accordion-content bg-dark-700">
+              <div class="p-5 border-t border-dark-400">
+                <p class="text-gray-300">
+                  For most everyday use, we recommend starting with the
+                  <strong class="text-nvidia-green">base</strong> model, which
+                  offers a good balance between speed and accuracy with minimal
+                  resource requirements. If you need faster results or have
+                  limited system resources, try the
+                  <strong class="text-nvidia-green">tiny</strong> model. For
+                  professional transcription work requiring high accuracy,
+                  consider the
+                  <strong class="text-nvidia-green">medium</strong> model if
+                  your system can handle it. The
+                  <strong class="text-nvidia-green">large</strong> model
+                  delivers the highest accuracy but requires significant GPU
+                  resources and is slower to process. Check the System
+                  Requirements section to determine which models are compatible
+                  with your hardware.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- FAQ 3 -->
+          <div
+            class="bg-dark-600 rounded-xl border border-dark-400 overflow-hidden"
+          >
+            <div
+              class="accordion-header cursor-pointer p-5 flex justify-between items-center"
+            >
+              <h3 class="text-lg font-semibold text-white">
+                Is my data sent to any servers?
+              </h3>
+              <i
+                class="fas fa-chevron-down text-gray-400 transition-transform"
+              ></i>
+            </div>
+            <div class="accordion-content bg-dark-700">
+              <div class="p-5 border-t border-dark-400">
+                <p class="text-gray-300">
+                  No, Whispr processes everything locally on your computer. Your
+                  audio and video files are never uploaded to any external
+                  servers for processing. The only thing that might be
+                  downloaded are the Whisper model files themselves (only the
+                  first time you use a specific model), which are then cached
+                  locally for future use. This ensures complete privacy and data
+                  security, making Whispr ideal for sensitive or confidential
+                  material.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- FAQ 4 -->
+          <div
+            class="bg-dark-600 rounded-xl border border-dark-400 overflow-hidden"
+          >
+            <div
+              class="accordion-header cursor-pointer p-5 flex justify-between items-center"
+            >
+              <h3 class="text-lg font-semibold text-white">
+                What file formats are supported?
+              </h3>
+              <i
+                class="fas fa-chevron-down text-gray-400 transition-transform"
+              ></i>
+            </div>
+            <div class="accordion-content bg-dark-700">
+              <div class="p-5 border-t border-dark-400">
+                <p class="text-gray-300">
+                  Whispr supports a wide range of audio and video formats
+                  including:
+                </p>
+                <ul class="list-disc list-inside mt-2 space-y-1 text-gray-300">
+                  <li>
+                    <strong class="text-nvidia-green">Audio formats:</strong>
+                    MP3, WAV, FLAC, OGG, M4A
+                  </li>
+                  <li>
+                    <strong class="text-nvidia-green">Video formats:</strong>
+                    MP4, AVI, MOV
+                  </li>
+                </ul>
+                <p class="mt-3 text-gray-300">
+                  If you have a file in another format, you may need to convert
+                  it first using a tool like FFmpeg or an online converter. For
+                  optimal results, ensure your audio is clear and has minimal
+                  background noise.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- FAQ 5 -->
+          <div
+            class="bg-dark-600 rounded-xl border border-dark-400 overflow-hidden"
+          >
+            <div
+              class="accordion-header cursor-pointer p-5 flex justify-between items-center"
+            >
+              <h3 class="text-lg font-semibold text-white">
+                How accurate is the transcription?
+              </h3>
+              <i
+                class="fas fa-chevron-down text-gray-400 transition-transform"
+              ></i>
+            </div>
+            <div class="accordion-content bg-dark-700">
+              <div class="p-5 border-t border-dark-400">
+                <p class="text-gray-300">
+                  Whisper's accuracy is among the best in the industry,
+                  particularly with its larger models. Accuracy depends on
+                  several factors:
+                </p>
+                <ul class="list-disc list-inside mt-2 space-y-1 text-gray-300">
+                  <li>
+                    <strong class="text-nvidia-green">Model size:</strong>
+                    Larger models (medium, large) offer higher accuracy
+                  </li>
+                  <li>
+                    <strong class="text-nvidia-green">Audio quality:</strong>
+                    Clear audio with minimal background noise yields better
+                    results
+                  </li>
+                  <li>
+                    <strong class="text-nvidia-green">Speaker clarity:</strong>
+                    Well-articulated speech is transcribed more accurately
+                  </li>
+                  <li>
+                    <strong class="text-nvidia-green"
+                      >Specialized terminology:</strong
+                    >
+                    Technical jargon may have varying accuracy depending on how
+                    common it is in the training data
+                  </li>
+                </ul>
+                <p class="mt-3 text-gray-300">
+                  The large model can achieve accuracy rates comparable to human
+                  transcription in ideal conditions, while smaller models make
+                  more errors but still deliver usable results for most content.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-dark-900 border-t border-dark-500 pt-12 pb-6">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+          <!-- Logo and Info -->
+          <div class="col-span-1">
+            <div class="flex items-center space-x-2 mb-4">
+              <div class="flex gap-[2px]">
+                <div class="w-[3px] bg-nvidia-green h-3 rounded-sm"></div>
+                <div class="w-[3px] bg-nvidia-green h-5 rounded-sm"></div>
+                <div class="w-[3px] bg-nvidia-green h-2 rounded-sm"></div>
+                <div class="w-[3px] bg-nvidia-green h-4 rounded-sm"></div>
+                <div class="w-[3px] bg-nvidia-green h-3 rounded-sm"></div>
+              </div>
+              <span class="text-xl font-bold text-white"
+                >Whispr<span class="text-nvidia-green font-mono blink"
+                  >_</span
+                ></span
+              >
+            </div>
+            <p class="text-gray-400 mb-4">
+              Transform speech to text with precision using OpenAI's Whisper
+              technology. Fast, accurate, and completely private.
+            </p>
+            <div class="flex space-x-4">
+              <a
+                href="https://github.com/openai/whisper"
+                target="_blank"
+                class="text-gray-400 hover:text-white transition-colors"
+              >
+                <i class="fab fa-github text-xl"></i>
+              </a>
+              <a
+                href="https://twitter.com/mohdmahmodi"
+                target="_blank"
+                class="text-gray-400 hover:text-white transition-colors"
+              >
+                <i class="fab fa-twitter text-xl"></i>
+              </a>
+              <a
+                href="https://linkedin.com/in/mohdmahmodi"
+                target="_blank"
+                class="text-gray-400 hover:text-white transition-colors"
+              >
+                <i class="fab fa-linkedin text-xl"></i>
+              </a>
+            </div>
+          </div>
+
+          <!-- Resources -->
+          <div>
+            <h3 class="text-lg font-bold text-white mb-4">Resources</h3>
+            <ul class="space-y-2">
+              <li>
+                <a
+                  href="https://github.com/openai/whisper"
+                  target="_blank"
+                  class="text-gray-400 hover:text-nvidia-green transition-colors flex items-center"
+                >
+                  <i class="fas fa-external-link-alt mr-2 text-xs"></i> Whisper
+                  on GitHub
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://openai.com/"
+                  target="_blank"
+                  class="text-gray-400 hover:text-nvidia-green transition-colors flex items-center"
+                >
+                  <i class="fas fa-external-link-alt mr-2 text-xs"></i> OpenAI
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://pytorch.org/"
+                  target="_blank"
+                  class="text-gray-400 hover:text-nvidia-green transition-colors flex items-center"
+                >
+                  <i class="fas fa-external-link-alt mr-2 text-xs"></i> PyTorch
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Navigation -->
+          <div>
+            <h3 class="text-lg font-bold text-white mb-4">Navigation</h3>
+            <ul class="space-y-2">
+              <li>
+                <a
+                  href="#studio"
+                  class="text-gray-400 hover:text-nvidia-green transition-colors"
+                >
+                  Studio
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#models"
+                  class="text-gray-400 hover:text-nvidia-green transition-colors"
+                >
+                  Models
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#requirements"
+                  class="text-gray-400 hover:text-nvidia-green transition-colors"
+                >
+                  Requirements
+                </a>
+              </li>
+              <li>
+                <a
+                  href="#faq"
+                  class="text-gray-400 hover:text-nvidia-green transition-colors"
+                >
+                  FAQ
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div
+          class="pt-6 border-t border-dark-400 text-center text-gray-500 text-sm"
+        >
+          <p>&copy; 2025 Whispr. All rights reserved.</p>
+          <p class="mt-2">
+            Developed by
+            <a
+              href="https://mohdmahmodi.com"
+              target="_blank"
+              class="text-nvidia-green hover:text-nvidia-light"
+              >Mohd Mahmodi</a
+            >
+          </p>
+        </div>
+      </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        // Mobile menu toggle
+        const mobileMenuButton = document.getElementById("mobile-menu-button");
+        const mobileMenu = document.getElementById("mobile-menu");
+
+        if (mobileMenuButton && mobileMenu) {
+          mobileMenuButton.addEventListener("click", function () {
+            mobileMenu.classList.toggle("hidden");
+          });
+        }
+
+        // Options panel toggle
+        const toggleOptions = document.getElementById("toggle-options");
+        const optionsPanel = document.getElementById("options-panel");
+
+        if (toggleOptions && optionsPanel) {
+          toggleOptions.addEventListener("click", function () {
+            if (optionsPanel.classList.contains("hidden")) {
+              optionsPanel.classList.remove("hidden");
+              toggleOptions.innerHTML =
+                '<i class="fas fa-times mr-1"></i> Hide options';
+            } else {
+              optionsPanel.classList.add("hidden");
+              toggleOptions.innerHTML =
+                '<i class="fas fa-cog mr-1"></i> Show options';
+            }
+          });
+        }
+
+        // Accordion functionality
+        const accordionHeaders = document.querySelectorAll(".accordion-header");
+
+        accordionHeaders.forEach((header) => {
+          header.addEventListener("click", function () {
+            const content = this.nextElementSibling;
+            const icon = this.querySelector("i");
+
+            // Close all other accordions
+            accordionHeaders.forEach((otherHeader) => {
+              if (otherHeader !== header) {
+                const otherContent = otherHeader.nextElementSibling;
+                const otherIcon = otherHeader.querySelector("i");
+                otherContent.style.maxHeight = null;
+                otherIcon.classList.remove("transform", "rotate-180");
+              }
+            });
+
+            // Toggle current accordion
+            if (content.style.maxHeight) {
+              content.style.maxHeight = null;
+              icon.classList.remove("transform", "rotate-180");
+            } else {
+              content.style.maxHeight = content.scrollHeight + "px";
+              icon.classList.add("transform", "rotate-180");
+            }
+          });
+        });
+
+        // Open first FAQ by default
+        if (accordionHeaders.length > 0) {
+          const firstHeader = accordionHeaders[0];
+          const firstContent = firstHeader.nextElementSibling;
+          const firstIcon = firstHeader.querySelector("i");
+
+          firstContent.style.maxHeight = firstContent.scrollHeight + "px";
+          firstIcon.classList.add("transform", "rotate-180");
+        }
+      });
+    </script>
+
+    <!-- Main JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  </body>
+</html>
