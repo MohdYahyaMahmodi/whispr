@@ -68,14 +68,14 @@
 
 <!-- Add screenshots here -->
 
-> _Screenshots showing the web interface, progress tracking, and results will be added here_
+> _Screenshots showing the web interface, progress tracking, and results_
 
 <details>
 <summary>📸 View More Screenshots</summary>
 
 <!-- Additional screenshots -->
 
-_More interface screenshots will be added to showcase key features_
+# <img src="fullpage.png" alt="Full Page Overview" style="vertical-align: middle;">
 
 </details>
 
