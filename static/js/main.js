@@ -8,17 +8,17 @@
  * - Drag and drop file upload with validation
  * - System hardware detection and model compatibility checking
  * - Download transcript in TXT/SRT formats
+ * - Editable transcript area with modified content download
+ * - Support for all six Whisper models (tiny, base, small, medium, large, turbo)
  *
  * Author: Mohd Mahmodi
  * License: MIT
  * GitHub: https://github.com/mohdmahmodi/whispr
  */
-
 document.addEventListener("DOMContentLoaded", function () {
   // ================================
   // DOM Element References
   // ================================
-
   // File upload elements
   const uploadForm = document.getElementById("upload-form");
   const fileInput = document.getElementById("file");
@@ -80,11 +80,11 @@ document.addEventListener("DOMContentLoaded", function () {
   // ================================
   // Global State Variables
   // ================================
-
   let currentTaskId = null; // Current transcription task ID
   let statusInterval = null; // Status polling interval
   let systemInfo = null; // System hardware information
   let consoleDisplay = null; // Console display element
+  let modelData = null; // Model specifications from server
 
   // Progress circle configuration
   const radius = 50;
@@ -104,10 +104,12 @@ document.addEventListener("DOMContentLoaded", function () {
   ];
   const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB limit
 
+  // Updated model list including turbo
+  const ALL_MODELS = ["tiny", "base", "small", "medium", "large", "turbo"];
+
   // ================================
   // Utility Functions
   // ================================
-
   function log(message, type = "info") {
     /**
      * Enhanced logging with timestamps and color coding
@@ -142,7 +144,7 @@ document.addEventListener("DOMContentLoaded", function () {
     /**
      * Format bytes for system information display
      */
-    if (!bytes) return "0 B";
+    if (!bytes || isNaN(bytes)) return "0 B";
     const k = 1024;
     const sizes = ["B", "KB", "MB", "GB", "TB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -153,23 +155,65 @@ document.addEventListener("DOMContentLoaded", function () {
     /**
      * Format seconds into human-readable time remaining
      */
+    if (!seconds || isNaN(seconds) || seconds <= 0) return "";
+
     if (seconds < 60) {
-      return `${Math.round(seconds)} seconds remaining`;
+      return `${Math.round(seconds)}s remaining`;
     } else if (seconds < 3600) {
       const minutes = Math.floor(seconds / 60);
       const secs = Math.round(seconds % 60);
-      return `${minutes} min ${secs} sec remaining`;
+      return `${minutes}m ${secs}s remaining`;
     } else {
       const hours = Math.floor(seconds / 3600);
       const minutes = Math.floor((seconds % 3600) / 60);
-      return `${hours} hr ${minutes} min remaining`;
+      return `${hours}h ${minutes}m remaining`;
     }
+  }
+
+  function formatSRTTime(seconds) {
+    /**
+     * Format seconds into SRT time format (HH:MM:SS,mmm)
+     */
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    const milliseconds = Math.floor((seconds % 1) * 1000);
+    return `${hours
+      .toString()
+      .padStart(
+        2,
+        "0"
+      )}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")},${milliseconds.toString().padStart(3, "0")}`;
+  }
+
+  function createSRTFromText(text) {
+    /**
+     * Create SRT subtitle format from plain text
+     * Since timing info might be lost, we'll create generic timing
+     */
+    if (!text.trim()) return "";
+
+    // Split text into sentences for subtitle segments
+    const sentences = text.split(/[.!?]+/).filter((s) => s.trim().length > 0);
+    let srtContent = "";
+
+    // Create subtitle entries with generic timing (5 seconds per sentence)
+    sentences.forEach((sentence, index) => {
+      const startTime = index * 5;
+      const endTime = (index + 1) * 5;
+      srtContent += `${index + 1}\n`;
+      srtContent += `${formatSRTTime(startTime)} --> ${formatSRTTime(
+        endTime
+      )}\n`;
+      srtContent += `${sentence.trim()}\n\n`;
+    });
+
+    return srtContent;
   }
 
   // ================================
   // Initialization Functions
   // ================================
-
   function init() {
     /**
      * Initialize the application
@@ -182,13 +226,13 @@ document.addEventListener("DOMContentLoaded", function () {
     // Load system information
     fetchSystemInfo();
 
+    // Load model information
+    fetchModelInfo();
+
     // Setup all event listeners
     setupEventListeners();
     setupFileHandling();
     setupUIToggles();
-
-    // Load model information
-    updateModelInfo();
 
     log("Application initialized successfully", "success");
   }
@@ -206,7 +250,6 @@ document.addEventListener("DOMContentLoaded", function () {
   // ================================
   // Event Listener Setup
   // ================================
-
   function setupEventListeners() {
     /**
      * Setup primary event listeners for form and buttons
@@ -268,35 +311,32 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     }
 
-    // Advanced options panel - FIXED
+    // Advanced options panel
     const toggleOptions = document.getElementById("toggle-options");
     const optionsPanel = document.getElementById("options-panel");
-
     if (toggleOptions && optionsPanel) {
-      // Check initial state and set proper text
-      const isHidden = optionsPanel.classList.contains("hidden");
-      if (isHidden) {
-        toggleOptions.innerHTML =
-          '<i class="fas fa-cog mr-1"></i> Show options';
-      } else {
-        toggleOptions.innerHTML =
-          '<i class="fas fa-times mr-1"></i> Hide options';
-      }
+      const updateToggleText = (isHidden) => {
+        if (isHidden) {
+          toggleOptions.innerHTML =
+            '<i class="fas fa-cog mr-2"></i>Show options<i class="fas fa-chevron-down ml-1"></i>';
+          log("Advanced options panel closed");
+        } else {
+          toggleOptions.innerHTML =
+            '<i class="fas fa-cog mr-2"></i>Hide options<i class="fas fa-chevron-up ml-1"></i>';
+          log("Advanced options panel opened");
+        }
+      };
 
+      // Set initial state
+      const initiallyHidden = optionsPanel.classList.contains("hidden");
+      updateToggleText(initiallyHidden);
+
+      // Add click event listener
       toggleOptions.addEventListener("click", function (e) {
         e.preventDefault();
-
-        if (optionsPanel.classList.contains("hidden")) {
-          optionsPanel.classList.remove("hidden");
-          toggleOptions.innerHTML =
-            '<i class="fas fa-times mr-1"></i> Hide options';
-          log("Advanced options panel opened");
-        } else {
-          optionsPanel.classList.add("hidden");
-          toggleOptions.innerHTML =
-            '<i class="fas fa-cog mr-1"></i> Show options';
-          log("Advanced options panel closed");
-        }
+        optionsPanel.classList.toggle("hidden");
+        const isNowHidden = optionsPanel.classList.contains("hidden");
+        updateToggleText(isNowHidden);
       });
     } else {
       log("Advanced options elements not found", "warn");
@@ -355,7 +395,6 @@ document.addEventListener("DOMContentLoaded", function () {
   // ================================
   // File Handling Functions
   // ================================
-
   function preventDefaults(e) {
     /**
      * Prevent default drag and drop behaviors
@@ -468,13 +507,11 @@ document.addEventListener("DOMContentLoaded", function () {
   // ================================
   // System Information Functions
   // ================================
-
   function fetchSystemInfo() {
     /**
      * Fetch system hardware information from server
      */
     log("Fetching system information...");
-
     fetch("/system_info")
       .then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -492,6 +529,26 @@ document.addEventListener("DOMContentLoaded", function () {
           "Unable to detect system capabilities",
           "bg-red-900/30 text-red-400"
         );
+      });
+  }
+
+  function fetchModelInfo() {
+    /**
+     * Fetch model specifications from server
+     */
+    log("Fetching model information...");
+    fetch("/model_info")
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((models) => {
+        log("Model info received", "success");
+        modelData = models;
+        updateModelInfo();
+      })
+      .catch((error) => {
+        log(`Error fetching model info: ${error}`, "error");
       });
   }
 
@@ -515,7 +572,6 @@ document.addEventListener("DOMContentLoaded", function () {
       if (gpuInfo) gpuInfo.textContent = info.gpu.name || "Unknown GPU";
       if (vramInfo) vramInfo.textContent = formatBytes(info.gpu.memory);
       if (gpuTroubleshooting) gpuTroubleshooting.classList.add("hidden");
-
       updateDeviceIndicator(
         "GPU Enabled",
         "bg-nvidia-900/30 text-nvidia-green"
@@ -528,7 +584,6 @@ document.addEventListener("DOMContentLoaded", function () {
       if (gpuInfo) gpuInfo.textContent = "Not detected";
       if (vramInfo) vramInfo.textContent = "N/A";
       if (gpuTroubleshooting) gpuTroubleshooting.classList.remove("hidden");
-
       updateDeviceIndicator(
         "CPU Only Mode",
         "bg-yellow-900/30 text-yellow-400"
@@ -562,25 +617,54 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function updateModelCompatibility(info) {
     /**
-     * Update model compatibility indicators based on system hardware
+     * Update model compatibility indicators based on system hardware - UPDATED FOR ALL MODELS
      */
-    const models = ["tiny", "base", "small", "medium", "large"];
     const gpuAvailable = info.gpu && info.gpu.available;
     const cachedModels = info.cached_models || [];
+    const gpuMemory = info.gpu?.memory || 0;
+    const gpuMemoryGB = gpuMemory / 1024 ** 3;
 
-    models.forEach((model) => {
+    // Model VRAM requirements (in GB)
+    const modelVRAMRequirements = {
+      tiny: 1,
+      base: 1,
+      small: 2,
+      medium: 5,
+      large: 10,
+      turbo: 6,
+    };
+
+    ALL_MODELS.forEach((model) => {
       const statusElement = document.getElementById(`model-status-${model}`);
       if (!statusElement) return;
 
       const isModelCached = cachedModels.some((cache) => cache.includes(model));
+      const vramRequired = modelVRAMRequirements[model] || 1;
       let statusText, statusClass;
 
       // Determine compatibility based on model requirements and available hardware
       if (model === "large" && !gpuAvailable) {
         statusText = "Not Recommended";
         statusClass = "bg-red-900/30 text-red-400";
-      } else if ((model === "medium" || model === "small") && !gpuAvailable) {
+      } else if (
+        model === "large" &&
+        gpuAvailable &&
+        gpuMemoryGB < vramRequired
+      ) {
+        statusText = "Insufficient VRAM";
+        statusClass = "bg-red-900/30 text-red-400";
+      } else if ((model === "medium" || model === "turbo") && !gpuAvailable) {
         statusText = "CPU Only (Slow)";
+        statusClass = "bg-yellow-900/30 text-yellow-400";
+      } else if (
+        (model === "medium" || model === "turbo") &&
+        gpuAvailable &&
+        gpuMemoryGB < vramRequired
+      ) {
+        statusText = "Limited VRAM";
+        statusClass = "bg-yellow-900/30 text-yellow-400";
+      } else if (model === "small" && !gpuAvailable) {
+        statusText = "CPU Only (Slower)";
         statusClass = "bg-yellow-900/30 text-yellow-400";
       } else {
         statusText = isModelCached ? "Ready (Downloaded)" : "Compatible";
@@ -595,57 +679,65 @@ document.addEventListener("DOMContentLoaded", function () {
   // ================================
   // Model Information Functions
   // ================================
-
   function updateModelInfo() {
     /**
-     * Update model information based on current selection
+     * Update model information based on current selection - UPDATED FOR ALL MODELS
      */
-    if (!modelSelect || !modelInfo) return;
+    if (!modelSelect || !modelInfo || !modelData) return;
 
     const selectedModel = modelSelect.value;
+    const model = modelData[selectedModel];
 
-    fetch("/model_info")
-      .then((response) => response.json())
-      .then((models) => {
-        const model = models[selectedModel];
-        if (model) {
-          let infoText = model.description;
+    if (model) {
+      let infoText = model.description;
 
-          // Add warnings for large models
-          if (model.size_mb > 1000) {
-            const sizeInGB = (model.size_mb / 1024).toFixed(1);
-            infoText += ` ⚠️ Large model (${sizeInGB} GB) - may take time to download.`;
-          }
+      // Add detailed specs
+      infoText += ` (${model.parameters} parameters, ~${model.vram_gb}GB VRAM)`;
 
-          // Add performance warnings for CPU-only systems
-          if (
-            systemInfo &&
-            !systemInfo.gpu?.available &&
-            ["medium", "large"].includes(selectedModel)
-          ) {
-            infoText += " Performance may be limited without GPU acceleration.";
-          }
-
-          modelInfo.textContent = infoText;
+      // Add download size warning for larger models
+      if (model.size_mb > 500) {
+        const sizeInMB = model.size_mb;
+        if (sizeInMB > 1000) {
+          const sizeInGB = (sizeInMB / 1024).toFixed(1);
+          infoText += ` ⚠️ Large model (~${sizeInGB} GB download)`;
+        } else {
+          infoText += ` Download size: ~${sizeInMB} MB`;
         }
-      })
-      .catch((error) => {
-        log(`Error fetching model info: ${error}`, "error");
-        if (modelInfo)
-          modelInfo.textContent = "Unable to load model information.";
-      });
+      }
+
+      // Add performance warnings for CPU-only systems
+      if (
+        systemInfo &&
+        !systemInfo.gpu?.available &&
+        ["medium", "large", "turbo"].includes(selectedModel)
+      ) {
+        infoText += " ⚠️ GPU recommended for optimal performance.";
+      }
+
+      // Add VRAM warning if insufficient
+      if (systemInfo && systemInfo.gpu?.available && systemInfo.gpu.memory) {
+        const gpuMemoryGB = systemInfo.gpu.memory / 1024 ** 3;
+        if (gpuMemoryGB < model.vram_gb) {
+          infoText += ` ⚠️ May require more VRAM than available (${gpuMemoryGB.toFixed(
+            1
+          )}GB available, ${model.vram_gb}GB recommended).`;
+        }
+      }
+
+      modelInfo.textContent = infoText;
+    } else {
+      modelInfo.textContent = "Model information not available.";
+    }
   }
 
   // ================================
   // Transcription Process Functions
   // ================================
-
   function handleSubmit(e) {
     /**
      * Handle form submission and start transcription process
      */
     e.preventDefault();
-
     if (!validateSubmission()) return;
 
     // Prepare form data - FIXED to include advanced options
@@ -690,7 +782,6 @@ document.addEventListener("DOMContentLoaded", function () {
       })
       .then((data) => {
         if (data.error) throw new Error(data.error);
-
         log(`Upload successful. Task ID: ${data.task_id}`, "success");
         currentTaskId = data.task_id;
 
@@ -698,6 +789,15 @@ document.addEventListener("DOMContentLoaded", function () {
         addConsoleLog(`File uploaded: ${data.file_name}`, "success");
         addConsoleLog(`Model selected: ${data.model}`, "info");
         addConsoleLog(`File size: ${formatFileSize(data.file_size)}`, "info");
+
+        // Log model specs if available
+        if (modelData && modelData[data.model]) {
+          const model = modelData[data.model];
+          addConsoleLog(
+            `Model specs: ${model.parameters} parameters, ~${model.relative_speed}x speed`,
+            "info"
+          );
+        }
 
         // Start status polling
         startStatusPolling();
@@ -720,7 +820,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const file = fileInput.files[0];
     const fileExtension = file.name.split(".").pop().toLowerCase();
-
     if (!ALLOWED_FILE_TYPES.includes(fileExtension)) {
       showError(`Unsupported file type: .${fileExtension}`);
       return false;
@@ -728,6 +827,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (!modelSelect || !modelSelect.value) {
       showError("Please select a model.");
+      return false;
+    }
+
+    // Check if selected model is valid
+    if (!ALL_MODELS.includes(modelSelect.value)) {
+      showError(`Invalid model selected: ${modelSelect.value}`);
       return false;
     }
 
@@ -746,7 +851,6 @@ document.addEventListener("DOMContentLoaded", function () {
         submitBtn.classList.remove("opacity-50", "cursor-not-allowed");
       }
     }
-
     if (fileInput) fileInput.disabled = isSubmitting;
     if (modelSelect) modelSelect.disabled = isSubmitting;
   }
@@ -754,7 +858,6 @@ document.addEventListener("DOMContentLoaded", function () {
   // ================================
   // Progress Tracking Functions
   // ================================
-
   function createProgressConsole() {
     /**
      * Create live console output display
@@ -766,11 +869,16 @@ document.addEventListener("DOMContentLoaded", function () {
     consoleDisplay.className =
       "mt-6 p-4 bg-dark-700 rounded-lg border border-dark-400";
     consoleDisplay.innerHTML = `
-      <div class="flex items-center justify-between mb-3">
-        <h4 class="text-sm font-medium text-gray-300">Console Output</h4>
-        <button id="clear-console" class="text-xs text-gray-500 hover:text-gray-400">Clear</button>
+      <div class="flex items-center justify-between mb-4">
+        <h4 class="text-sm font-medium text-gray-300">
+          <i class="fas fa-terminal mr-2"></i>Console Output
+        </h4>
+        <button id="clear-console" class="text-xs text-gray-400 hover:text-gray-200">
+          Clear
+        </button>
       </div>
-      <div id="console-logs" class="h-32 overflow-y-auto bg-dark-800 rounded p-2 font-mono text-sm text-gray-300 space-y-1"></div>
+      <div id="console-logs" class="h-32 overflow-y-auto bg-dark-800 rounded p-3 font-mono text-xs">
+      </div>
     `;
 
     if (statusContainer) {
@@ -805,7 +913,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const logEntry = document.createElement("div");
     logEntry.className = `text-xs ${colors[type] || colors.info}`;
     logEntry.textContent = `[${timestamp}] ${message}`;
-
     logsDiv.appendChild(logEntry);
     logsDiv.scrollTop = logsDiv.scrollHeight;
   }
@@ -830,7 +937,6 @@ document.addEventListener("DOMContentLoaded", function () {
           // Handle completion or error
           if (data.status === "completed" || data.status === "error") {
             clearInterval(statusInterval);
-
             if (data.status === "completed") {
               fetchFinalTranscript();
               addConsoleLog(
@@ -857,14 +963,16 @@ document.addEventListener("DOMContentLoaded", function () {
           clearInterval(statusInterval);
           showError(`Status check failed: ${error.message}`);
         });
-    }, 800); // Poll every 800ms for smooth updates
+    }, 500); // Poll every 500ms for smoother updates
   }
 
   function updateStatusFromData(data) {
     /**
-     * Update UI with status data from server
+     * Update UI with status data from server - FIXED progress calculation
      */
-    const progress = Math.round(data.progress || 0);
+    // Ensure progress is a valid number between 0 and 100
+    let progress = Math.max(0, Math.min(100, Math.round(data.progress || 0)));
+
     const stageInfo = data.stage_info || "";
     const detailedStatus = data.detailed_status || "";
 
@@ -880,13 +988,20 @@ document.addEventListener("DOMContentLoaded", function () {
     // Update device type indicator
     updateDeviceTypeDisplay(data.device_type);
 
-    // Update download progress display
+    // Update download progress display - FIXED to handle NaN values
     updateDownloadProgress(data);
 
     // Create status text with time estimate
     let statusText = detailedStatus || stageInfo;
-    if (data.time_remaining && data.time_remaining > 0) {
-      statusText += ` (${formatTimeRemaining(data.time_remaining)})`;
+    if (
+      data.time_remaining &&
+      data.time_remaining > 0 &&
+      !isNaN(data.time_remaining)
+    ) {
+      const timeString = formatTimeRemaining(data.time_remaining);
+      if (timeString) {
+        statusText += ` (${timeString})`;
+      }
     }
 
     // Add audio duration information
@@ -920,28 +1035,33 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function updateDownloadProgress(data) {
     /**
-     * Update model download progress display
+     * Update model download progress display - FIXED to handle NaN values
      */
     if (
       data.status === "downloading_model" &&
       data.downloaded !== undefined &&
-      data.total_size !== undefined
+      data.total_size !== undefined &&
+      !isNaN(data.downloaded) &&
+      !isNaN(data.total_size) &&
+      data.total_size > 0
     ) {
       if (downloadProgressInfo) downloadProgressInfo.classList.remove("hidden");
       if (downloadSize) downloadSize.textContent = formatBytes(data.downloaded);
       if (totalSize) totalSize.textContent = formatBytes(data.total_size);
 
-      // Add download progress to console
+      // Add download progress to console - only if values are valid
       const downloadPercent = (
         (data.downloaded / data.total_size) *
         100
       ).toFixed(1);
-      addConsoleLog(
-        `Download progress: ${downloadPercent}% (${formatBytes(
-          data.downloaded
-        )} / ${formatBytes(data.total_size)})`,
-        "info"
-      );
+      if (!isNaN(downloadPercent) && downloadPercent > 0) {
+        addConsoleLog(
+          `Download progress: ${downloadPercent}% (${formatBytes(
+            data.downloaded
+          )} / ${formatBytes(data.total_size)})`,
+          "info"
+        );
+      }
     } else {
       if (downloadProgressInfo) downloadProgressInfo.classList.add("hidden");
     }
@@ -949,17 +1069,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function updateStatus(message, progressValue) {
     /**
-     * Update progress bars and status message
+     * Update progress bars and status message - FIXED to ensure smooth progress
      */
+    // Ensure progressValue is valid
+    progressValue = Math.max(0, Math.min(100, Math.round(progressValue || 0)));
+
     // Update status message
     if (statusMessage) statusMessage.textContent = message;
 
-    // Update linear progress bar
-    if (progressBar) progressBar.style.width = `${progressValue}%`;
+    // Update linear progress bar with smooth transition
+    if (progressBar) {
+      progressBar.style.transition = "width 0.5s ease";
+      progressBar.style.width = `${progressValue}%`;
+    }
 
-    // Update circular progress indicator
+    // Update circular progress indicator with smooth transition
     if (progressCircle && progressPercentageCircle) {
       const offset = circumference - (progressValue / 100) * circumference;
+      progressCircle.style.transition = "stroke-dashoffset 0.5s ease";
       progressCircle.style.strokeDashoffset = offset;
       progressPercentageCircle.textContent = `${progressValue}%`;
     }
@@ -975,12 +1102,46 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // ================================
+  // Transcript Editing Functions
+  // ================================
+  function onTranscriptChange() {
+    /**
+     * Handle transcript text changes
+     */
+    // Add visual indicator that transcript has been modified
+    updateTranscriptUI(true);
+    log("Transcript modified by user", "info");
+  }
+
+  function updateTranscriptUI(isModified) {
+    /**
+     * Update transcript UI to show edit status
+     */
+    const transcriptLabel = document.querySelector('label[for="transcript"]');
+    if (transcriptLabel) {
+      if (isModified) {
+        transcriptLabel.innerHTML = `
+          <i class="fas fa-file-text mr-2"></i>
+          Transcript 
+          <span class="text-yellow-400 text-sm">(Modified)</span>
+          <span class="text-gray-400 text-xs ml-2">- Editable</span>
+        `;
+      } else {
+        transcriptLabel.innerHTML = `
+          <i class="fas fa-file-text mr-2"></i>
+          Transcript 
+          <span class="text-gray-400 text-xs">- Click to edit</span>
+        `;
+      }
+    }
+  }
+
+  // ================================
   // Results and Download Functions
   // ================================
-
   function fetchFinalTranscript() {
     /**
-     * Fetch completed transcript from server
+     * Fetch completed transcript from server - UPDATED with edit features
      */
     if (!currentTaskId) return;
 
@@ -988,7 +1149,19 @@ document.addEventListener("DOMContentLoaded", function () {
       .then((response) => response.json())
       .then((data) => {
         log("Final transcript fetched successfully");
-        if (transcript) transcript.value = data.transcript;
+        if (transcript) {
+          transcript.value = data.transcript;
+          // Make transcript clearly editable
+          transcript.readOnly = false;
+          transcript.style.backgroundColor = "#374151"; // Slightly lighter to indicate editability
+          transcript.style.cursor = "text";
+
+          // Add event listener to track changes
+          transcript.addEventListener("input", onTranscriptChange);
+
+          // Update UI to show transcript is editable
+          updateTranscriptUI(false);
+        }
 
         // Show results, hide progress
         if (statusContainer) statusContainer.classList.add("hidden");
@@ -1008,9 +1181,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function downloadTranscript(format) {
     /**
-     * Download transcript in specified format - FIXED
+     * Download transcript in specified format - UPDATED to use edited text
      */
-    if (!currentTaskId) {
+    if (!transcript || !transcript.value.trim()) {
       showError("No transcript available for download.");
       return;
     }
@@ -1020,27 +1193,46 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    // Use window.open for better download handling
     try {
-      const downloadUrl = `/download/${currentTaskId}/${format}`;
+      let content = "";
+      let filename = "";
+      let mimeType = "";
 
-      // Create a temporary anchor element for download
+      if (format === "txt") {
+        // For TXT format, use the edited text directly
+        content = transcript.value;
+        filename = "transcript.txt";
+        mimeType = "text/plain";
+      } else if (format === "srt") {
+        // For SRT format, create simple subtitles from the edited text
+        // Since timing info might be lost when user edits, we'll create generic timing
+        content = createSRTFromText(transcript.value);
+        filename = "transcript.srt";
+        mimeType = "text/plain";
+      }
+
+      // Create and download the file
+      const blob = new Blob([content], { type: mimeType });
+      const url = window.URL.createObjectURL(blob);
       const anchor = document.createElement("a");
-      anchor.href = downloadUrl;
-      anchor.target = "_blank";
-      anchor.download = `transcript.${format}`;
-
-      // Append to body, click, and remove
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.style.display = "none";
       document.body.appendChild(anchor);
       anchor.click();
       document.body.removeChild(anchor);
 
-      log(`Downloading transcript as ${format}`, "success");
+      // Clean up the object URL
+      window.URL.revokeObjectURL(url);
 
-      // Clean up server resources after successful download
-      setTimeout(() => {
-        cleanupTask();
-      }, 2000);
+      log(`Downloaded transcript as ${format}`, "success");
+
+      // Clean up server resources if we still have a task ID
+      if (currentTaskId) {
+        setTimeout(() => {
+          cleanupTask();
+        }, 2000);
+      }
     } catch (error) {
       log(`Download error: ${error}`, "error");
       showError(
@@ -1134,7 +1326,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
       // Try to copy using execCommand
       const successful = document.execCommand("copy");
-
       if (successful) {
         log("Transcript copied (fallback method)", "success");
         showCopySuccess();
@@ -1143,7 +1334,6 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     } catch (err) {
       log(`Fallback copy failed: ${err}`, "error");
-
       // Last resort - select the text in the textarea and show instruction
       textArea.style.position = "static";
       textArea.style.left = "auto";
@@ -1151,7 +1341,6 @@ document.addEventListener("DOMContentLoaded", function () {
       textArea.style.opacity = "1";
       textArea.style.pointerEvents = "auto";
       textArea.select();
-
       showError(
         "Unable to copy automatically. Please press Ctrl+C (or Cmd+C on Mac) to copy the selected text."
       );
@@ -1168,7 +1357,6 @@ document.addEventListener("DOMContentLoaded", function () {
   // ================================
   // Error Handling Functions
   // ================================
-
   function showError(message) {
     /**
      * Display error message to user
@@ -1189,10 +1377,9 @@ document.addEventListener("DOMContentLoaded", function () {
   // ================================
   // UI Reset Functions
   // ================================
-
   function resetUI() {
     /**
-     * Reset UI for new transcription
+     * Reset UI for new transcription - UPDATED to handle edit state
      */
     log("Resetting UI for new transcription");
 
@@ -1225,14 +1412,22 @@ document.addEventListener("DOMContentLoaded", function () {
     // Re-enable form
     setSubmissionState(false);
 
-    // Clear transcript
-    if (transcript) transcript.value = "";
+    // Clear and reset transcript
+    if (transcript) {
+      transcript.value = "";
+      transcript.readOnly = true;
+      transcript.style.backgroundColor = "";
+      transcript.style.cursor = "";
+      transcript.removeEventListener("input", onTranscriptChange);
+    }
+
+    // Reset transcript UI
+    updateTranscriptUI(false);
   }
 
   // ================================
   // Application Startup
   // ================================
-
   // Initialize the application when DOM is ready
   init();
 });

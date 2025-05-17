@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Whispr | Transcription Studio</title>
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <!-- FontAwesome CDN -->
     <link
       rel="stylesheet"
@@ -16,10 +17,8 @@
       href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
     <!-- TailwindCSS Play CDN and custom config -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -58,7 +57,6 @@
         },
       };
     </script>
-
     <style>
       /* Only necessary custom styles that can't be easily done with Tailwind */
       @keyframes blink {
@@ -70,11 +68,9 @@
           opacity: 0;
         }
       }
-
       .blink {
         animation: blink 1s step-end infinite;
       }
-
       @keyframes equalize {
         0% {
           height: 60%;
@@ -155,17 +151,14 @@
           height: 50%;
         }
       }
-
       /* Progress ring */
       .progress-ring {
         transform: rotate(-90deg);
       }
-
       .progress-ring__circle {
         stroke: #303030;
         fill: transparent;
       }
-
       .progress-ring__circle-progress {
         stroke: #76b900;
         fill: transparent;
@@ -174,7 +167,6 @@
       }
     </style>
   </head>
-
   <body class="bg-dark-800 text-gray-200 font-plex">
     <!-- Navbar -->
     <nav class="bg-dark-900 sticky top-0 z-50 shadow-md">
@@ -197,7 +189,6 @@
               >
             </div>
           </a>
-
           <!-- Desktop Nav -->
           <div class="hidden md:flex items-center space-x-8">
             <a
@@ -225,7 +216,6 @@
               class="ml-4 px-3 py-1 text-xs font-medium rounded-full"
             ></div>
           </div>
-
           <!-- Mobile Menu Button -->
           <div class="md:hidden">
             <button
@@ -249,7 +239,6 @@
           </div>
         </div>
       </div>
-
       <!-- Mobile Menu -->
       <div
         id="mobile-menu"
@@ -279,7 +268,6 @@
         </div>
       </div>
     </nav>
-
     <!-- Hero Section -->
     <section class="bg-dark-900 py-16 md:py-20 border-b border-dark-500">
       <div class="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -292,9 +280,7 @@
             >
           </h1>
           <p class="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto mb-10">
-            Transform audio and video to text with precision using OpenAI's
-            Whisper. Fast, accurate, and completely private with local
-            processing.
+            Transform speech to text with OpenAI's Whisper. A general-purpose speech recognition model trained on diverse audio that performs multilingual speech recognition, speech translation, and language identification. Fast, accurate, and completely private with local processing.
           </p>
           <div
             class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4"
@@ -315,7 +301,6 @@
         </div>
       </div>
     </section>
-
     <!-- Studio Section -->
     <section id="studio" class="py-16 bg-dark-800">
       <div class="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -331,7 +316,6 @@
             Upload any audio or video file to convert it to text in minutes
           </p>
         </div>
-
         <div class="max-w-4xl mx-auto">
           <!-- Upload Form Card -->
           <div
@@ -357,7 +341,6 @@
                     accept=".mp3,.wav,.mp4,.avi,.mov,.flac,.ogg,.m4a"
                     required
                   />
-
                   <!-- File Prompt View -->
                   <div id="file-prompt" class="text-center">
                     <div class="text-nvidia-green text-5xl mb-4">
@@ -378,7 +361,6 @@
                       Supports MP3, WAV, MP4, AVI, MOV, FLAC, OGG, M4A
                     </p>
                   </div>
-
                   <!-- File Selected View -->
                   <div id="file-info" class="hidden text-center">
                     <div
@@ -403,7 +385,6 @@
                   </div>
                 </div>
               </div>
-
               <!-- Model Selection -->
               <div>
                 <label
@@ -417,18 +398,21 @@
                     name="model"
                     class="w-full bg-dark-700 border border-dark-300 rounded-lg py-3 px-4 pr-10 text-white appearance-none focus:outline-none focus:border-nvidia-green focus:ring focus:ring-nvidia-green/20"
                   >
-                    <option value="tiny">Tiny - Fastest (75MB)</option>
+                    <option value="tiny">Tiny - Fastest (39M parameters, ~1GB VRAM)</option>
                     <option value="base" selected>
-                      Base - Fast with good accuracy (142MB)
+                      Base - Fast with good accuracy (74M parameters, ~1GB VRAM)
                     </option>
                     <option value="small">
-                      Small - Balanced speed and accuracy (466MB)
+                      Small - Balanced speed and accuracy (244M parameters, ~2GB VRAM)
                     </option>
                     <option value="medium">
-                      Medium - High accuracy (1.5GB)
+                      Medium - High accuracy (769M parameters, ~5GB VRAM)
                     </option>
                     <option value="large">
-                      Large - Highest accuracy (2.9GB)
+                      Large - Highest accuracy (1550M parameters, ~10GB VRAM)
+                    </option>
+                    <option value="turbo">
+                      Turbo - Optimized large-v3 (809M parameters, ~6GB VRAM)
                     </option>
                   </select>
                   <div
@@ -438,11 +422,9 @@
                   </div>
                 </div>
                 <p id="model-info" class="mt-2 text-sm text-gray-400">
-                  Base model offers good balance between speed and accuracy with
-                  a smaller download size.
+                  Base model offers good balance between speed and accuracy. Turbo model is recommended for faster transcription with minimal accuracy loss.
                 </p>
               </div>
-
               <!-- Advanced Options -->
               <div class="border border-dark-300 rounded-lg p-5 bg-dark-700/50">
                 <div class="flex items-center justify-between mb-4">
@@ -503,7 +485,6 @@
                   </div>
                 </div>
               </div>
-
               <!-- Submit Button -->
               <div class="flex justify-center">
                 <button
@@ -517,7 +498,6 @@
               </div>
             </form>
           </div>
-
           <!-- Progress Section -->
           <div
             id="status-container"
@@ -590,7 +570,6 @@
                   </div>
                 </div>
               </div>
-
               <div id="loading-spinner" class="flex justify-center py-4">
                 <div class="flex h-10 gap-[3px] items-end">
                   <div
@@ -625,7 +604,6 @@
               </div>
             </div>
           </div>
-
           <!-- Results Section -->
           <div
             id="results-container"
@@ -685,7 +663,6 @@
               </button>
             </div>
           </div>
-
           <!-- Error Section -->
           <div
             id="error-container"
@@ -719,7 +696,6 @@
         </div>
       </div>
     </section>
-
     <!-- Features Section -->
     <section class="py-16 bg-dark-700 border-t border-dark-500">
       <div class="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -735,7 +711,6 @@
             Powerful speech recognition with privacy and flexibility
           </p>
         </div>
-
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <!-- Feature 1 -->
           <div
@@ -752,7 +727,6 @@
               never leave your computer, ensuring complete privacy.
             </p>
           </div>
-
           <!-- Feature 2 -->
           <div
             class="bg-dark-600 rounded-xl shadow-md p-6 border border-dark-400 hover:border-nvidia-green transition-all duration-300 hover:-translate-y-1"
@@ -770,7 +744,6 @@
               compared to CPU-only solutions.
             </p>
           </div>
-
           <!-- Feature 3 -->
           <div
             class="bg-dark-600 rounded-xl shadow-md p-6 border border-dark-400 hover:border-nvidia-green transition-all duration-300 hover:-translate-y-1"
@@ -780,13 +753,11 @@
             >
               <i class="fas fa-language text-xl"></i>
             </div>
-            <h3 class="text-xl font-semibold text-white mb-2">Multilingual</h3>
+            <h3 class="text-xl font-semibold text-white mb-2">Multilingual & Translation</h3>
             <p class="text-gray-400">
-              Accurately transcribe content in dozens of languages with support
-              for various accents and dialects.
+              Accurately transcribe content in dozens of languages with support for speech translation and language identification.
             </p>
           </div>
-
           <!-- Feature 4 -->
           <div
             class="bg-dark-600 rounded-xl shadow-md p-6 border border-dark-400 hover:border-nvidia-green transition-all duration-300 hover:-translate-y-1"
@@ -798,11 +769,10 @@
             </div>
             <h3 class="text-xl font-semibold text-white mb-2">Model Options</h3>
             <p class="text-gray-400">
-              Choose from five model sizes to balance speed and accuracy based
+              Choose from six model sizes to balance speed and accuracy based
               on your specific needs.
             </p>
           </div>
-
           <!-- Feature 5 -->
           <div
             class="bg-dark-600 rounded-xl shadow-md p-6 border border-dark-400 hover:border-nvidia-green transition-all duration-300 hover:-translate-y-1"
@@ -820,7 +790,6 @@
               MOV, FLAC, OGG, and M4A.
             </p>
           </div>
-
           <!-- Feature 6 -->
           <div
             class="bg-dark-600 rounded-xl shadow-md p-6 border border-dark-400 hover:border-nvidia-green transition-all duration-300 hover:-translate-y-1"
@@ -839,7 +808,6 @@
         </div>
       </div>
     </section>
-
     <!-- Models Section -->
     <section id="models" class="py-16 bg-dark-800 border-t border-dark-500">
       <div class="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -852,10 +820,9 @@
             Model Comparison
           </h2>
           <p class="text-gray-400 max-w-2xl mx-auto">
-            Choose the right Whisper model for your transcription needs
+            Choose the right Whisper model for your transcription needs. Relative speeds are measured on A100 GPU with English speech.
           </p>
         </div>
-
         <div class="overflow-x-auto">
           <table class="min-w-full">
             <thead class="bg-dark-600">
@@ -868,17 +835,17 @@
                 <th
                   class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
                 >
-                  Size
+                  Parameters
                 </th>
                 <th
                   class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
                 >
-                  Speed
+                  VRAM Required
                 </th>
                 <th
                   class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
                 >
-                  Accuracy
+                  Relative Speed
                 </th>
                 <th
                   class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
@@ -893,24 +860,14 @@
                   <div class="font-medium text-white">Tiny</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                  75 MB
+                  39 M
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  ~1 GB
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex space-x-1">
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex space-x-1">
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                  <div class="flex items-center">
+                    <span class="text-nvidia-green font-semibold">~10x</span>
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
@@ -922,24 +879,14 @@
                   <div class="font-medium text-white">Base</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                  142 MB
+                  74 M
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  ~1 GB
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex space-x-1">
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex space-x-1">
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                  <div class="flex items-center">
+                    <span class="text-nvidia-green font-semibold">~7x</span>
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
@@ -951,24 +898,14 @@
                   <div class="font-medium text-white">Small</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                  466 MB
+                  244 M
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  ~2 GB
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex space-x-1">
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex space-x-1">
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                  <div class="flex items-center">
+                    <span class="text-nvidia-green font-semibold">~4x</span>
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
@@ -980,24 +917,14 @@
                   <div class="font-medium text-white">Medium</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                  1.5 GB
+                  769 M
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  ~5 GB
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex space-x-1">
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex space-x-1">
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
+                  <div class="flex items-center">
+                    <span class="text-nvidia-green font-semibold">~2x</span>
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
@@ -1009,28 +936,37 @@
                   <div class="font-medium text-white">Large</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                  2.9 GB
+                  1550 M
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  ~10 GB
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex space-x-1">
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                    <i class="fas fa-circle text-dark-300 text-xs"></i>
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex space-x-1">
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
-                    <i class="fas fa-circle text-nvidia-green text-xs"></i>
+                  <div class="flex items-center">
+                    <span class="text-nvidia-green font-semibold">1x</span>
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                   Critical transcription where every word matters
+                </td>
+              </tr>
+              <tr class="hover:bg-dark-600">
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="font-medium text-white">Turbo</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  809 M
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  ~6 GB
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div class="flex items-center">
+                    <span class="text-nvidia-green font-semibold">~8x</span>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                  Optimized large-v3, fastest with minimal accuracy loss
                 </td>
               </tr>
             </tbody>
@@ -1038,7 +974,6 @@
         </div>
       </div>
     </section>
-
     <!-- Requirements Section -->
     <section
       id="requirements"
@@ -1054,9 +989,8 @@
             System Requirements
           </h2>
           <p class="text-gray-400 max-w-2xl mx-auto mb-4">
-            Check if your system meets the requirements for each model
+            Whisper requires Python 3.8-3.11 and recent PyTorch versions. Install with: pip install -U openai-whisper
           </p>
-
           <!-- Hardware Status Badge -->
           <div
             id="hardware-status"
@@ -1066,7 +1000,6 @@
             Checking system capabilities...
           </div>
         </div>
-
         <div
           class="bg-dark-600 rounded-xl shadow-xl overflow-hidden mb-12 border border-dark-400"
         >
@@ -1084,7 +1017,7 @@
                     scope="col"
                     class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider"
                   >
-                    Size
+                    Parameters
                   </th>
                   <th
                     scope="col"
@@ -1125,7 +1058,7 @@
                     <div class="font-medium text-white">Tiny</div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                    75 MB
+                    39 M
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                     Any modern CPU
@@ -1148,14 +1081,13 @@
                     </span>
                   </td>
                 </tr>
-
                 <!-- Base Model -->
                 <tr class="hover:bg-dark-500">
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="font-medium text-white">Base</div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                    142 MB
+                    74 M
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                     4+ cores recommended
@@ -1178,14 +1110,13 @@
                     </span>
                   </td>
                 </tr>
-
                 <!-- Small Model -->
                 <tr class="hover:bg-dark-500">
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="font-medium text-white">Small</div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                    466 MB
+                    244 M
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                     6+ cores recommended
@@ -1208,14 +1139,13 @@
                     </span>
                   </td>
                 </tr>
-
                 <!-- Medium Model -->
                 <tr class="hover:bg-dark-500">
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="font-medium text-white">Medium</div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                    1.5 GB
+                    769 M
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                     High-end multi-core
@@ -1238,14 +1168,13 @@
                     </span>
                   </td>
                 </tr>
-
                 <!-- Large Model -->
                 <tr class="hover:bg-dark-500">
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="font-medium text-white">Large</div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                    2.9 GB
+                    1550 M
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                     Very high-end multi-core
@@ -1268,11 +1197,39 @@
                     </span>
                   </td>
                 </tr>
+                <!-- Turbo Model -->
+                <tr class="hover:bg-dark-500">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="font-medium text-white">Turbo</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    809 M
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    High-end multi-core
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    12 GB
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    Strongly recommended
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    ~6 GB
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span
+                      id="model-status-turbo"
+                      class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-dark-400 text-gray-300"
+                    >
+                      Checking...
+                    </span>
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
         </div>
-
 <!-- Redesigned Hardware Detection Section with Horizontal Layout -->
 <div class="grid grid-cols-1 gap-8">
   <!-- Hardware Info Card -->
@@ -1296,7 +1253,6 @@
           <div id="cpu-info" class="font-medium text-white text-sm">Checking...</div>
         </div>
       </div>
-
       <!-- RAM -->
       <div class="bg-dark-700 rounded-lg p-4 border border-dark-400 flex flex-col items-center">
         <div class="w-12 h-12 rounded-full bg-nvidia-900/30 flex items-center justify-center mb-3">
@@ -1307,7 +1263,6 @@
           <div id="ram-info" class="font-medium text-white text-sm">Checking...</div>
         </div>
       </div>
-
       <!-- GPU -->
       <div class="bg-dark-700 rounded-lg p-4 border border-dark-400 flex flex-col items-center">
         <div class="w-12 h-12 rounded-full bg-nvidia-900/30 flex items-center justify-center mb-3">
@@ -1318,7 +1273,6 @@
           <div id="gpu-info" class="font-medium text-white text-sm">Checking...</div>
         </div>
       </div>
-
       <!-- VRAM -->
       <div class="bg-dark-700 rounded-lg p-4 border border-dark-400 flex flex-col items-center">
         <div class="w-12 h-12 rounded-full bg-nvidia-900/30 flex items-center justify-center mb-3">
@@ -1329,7 +1283,6 @@
           <div id="vram-info" class="font-medium text-white text-sm">Checking...</div>
         </div>
       </div>
-
       <!-- PyTorch -->
       <div class="bg-dark-700 rounded-lg p-4 border border-dark-400 flex flex-col items-center">
         <div class="w-12 h-12 rounded-full bg-nvidia-900/30 flex items-center justify-center mb-3">
@@ -1340,7 +1293,6 @@
           <div id="pytorch-version" class="font-medium text-white text-sm">Checking...</div>
         </div>
       </div>
-
       <!-- CUDA -->
       <div class="bg-dark-700 rounded-lg p-4 border border-dark-400 flex flex-col items-center">
         <div class="w-12 h-12 rounded-full bg-nvidia-900/30 flex items-center justify-center mb-3">
@@ -1353,7 +1305,6 @@
       </div>
     </div>
   </div>
-
   <!-- GPU Troubleshooting -->
   <div id="gpu-troubleshooting" class="bg-dark-600 rounded-xl shadow-xl p-6 border border-dark-400 hidden">
     <h3 class="text-xl font-bold text-white mb-6">
@@ -1418,7 +1369,6 @@
         </div>
       </div>
     </section>
-
     <!-- FAQ Section -->
     <section id="faq" class="py-16 bg-dark-800 border-t border-dark-500">
       <div class="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -1434,7 +1384,6 @@
             Get answers to common questions about Whispr
           </p>
         </div>
-
         <div class="max-w-3xl mx-auto space-y-4">
           <!-- FAQ 1 -->
           <div
@@ -1451,19 +1400,11 @@
             <div class="accordion-content bg-dark-700">
               <div class="p-5 border-t border-dark-400">
                 <p class="text-gray-300">
-                  Whisper is an automatic speech recognition (ASR) system
-                  developed by OpenAI. It's trained on a diverse dataset of
-                  multilingual and multitask supervised data from the web. This
-                  robust training enables Whisper to recognize speech across
-                  many languages and accents, even with background noise or
-                  technical language. Whispr leverages Whisper's technology
-                  while running it entirely on your local machine, ensuring your
-                  audio data never leaves your computer.
+                  Whisper is a general-purpose speech recognition model developed by OpenAI. It's trained on a large dataset of diverse audio and is a multitasking model that can perform multilingual speech recognition, speech translation, and language identification. The model uses a Transformer sequence-to-sequence architecture trained on various speech processing tasks, allowing a single model to replace many stages of a traditional speech-processing pipeline. Whispr leverages this technology while running it entirely on your local machine, ensuring your audio data never leaves your computer.
                 </p>
               </div>
             </div>
           </div>
-
           <!-- FAQ 2 -->
           <div
             class="bg-dark-600 rounded-xl border border-dark-400 overflow-hidden"
@@ -1482,25 +1423,19 @@
               <div class="p-5 border-t border-dark-400">
                 <p class="text-gray-300">
                   For most everyday use, we recommend starting with the
-                  <strong class="text-nvidia-green">base</strong> model, which
-                  offers a good balance between speed and accuracy with minimal
-                  resource requirements. If you need faster results or have
-                  limited system resources, try the
-                  <strong class="text-nvidia-green">tiny</strong> model. For
-                  professional transcription work requiring high accuracy,
-                  consider the
-                  <strong class="text-nvidia-green">medium</strong> model if
-                  your system can handle it. The
-                  <strong class="text-nvidia-green">large</strong> model
-                  delivers the highest accuracy but requires significant GPU
-                  resources and is slower to process. Check the System
+                  <strong class="text-nvidia-green">turbo</strong> model, which
+                  is optimized from large-v3 for faster transcription with minimal accuracy degradation. If you need maximum speed and have limited resources, try the
+                  <strong class="text-nvidia-green">tiny</strong> or <strong class="text-nvidia-green">base</strong> models. The
+                  <strong class="text-nvidia-green">medium</strong> and
+                  <strong class="text-nvidia-green">large</strong> models
+                  deliver the highest accuracy but require significant GPU
+                  resources. Note that English-only models (.en) tend to perform better for English content, especially for the smaller models. Check the System
                   Requirements section to determine which models are compatible
                   with your hardware.
                 </p>
               </div>
             </div>
           </div>
-
           <!-- FAQ 3 -->
           <div
             class="bg-dark-600 rounded-xl border border-dark-400 overflow-hidden"
@@ -1530,7 +1465,6 @@
               </div>
             </div>
           </div>
-
           <!-- FAQ 4 -->
           <div
             class="bg-dark-600 rounded-xl border border-dark-400 overflow-hidden"
@@ -1563,14 +1497,13 @@
                 </ul>
                 <p class="mt-3 text-gray-300">
                   If you have a file in another format, you may need to convert
-                  it first using a tool like FFmpeg or an online converter. For
+                  it first using FFmpeg or an online converter. FFmpeg is also required by Whisper for audio processing. For
                   optimal results, ensure your audio is clear and has minimal
                   background noise.
                 </p>
               </div>
             </div>
           </div>
-
           <!-- FAQ 5 -->
           <div
             class="bg-dark-600 rounded-xl border border-dark-400 overflow-hidden"
@@ -1588,8 +1521,7 @@
             <div class="accordion-content bg-dark-700">
               <div class="p-5 border-t border-dark-400">
                 <p class="text-gray-300">
-                  Whisper's accuracy is among the best in the industry,
-                  particularly with its larger models. Accuracy depends on
+                  Whisper's performance varies widely depending on the language and model size. The accuracy depends on
                   several factors:
                 </p>
                 <ul class="list-disc list-inside mt-2 space-y-1 text-gray-300">
@@ -1598,26 +1530,21 @@
                     Larger models (medium, large) offer higher accuracy
                   </li>
                   <li>
+                    <strong class="text-nvidia-green">Language:</strong>
+                    Performance varies significantly across different languages
+                  </li>
+                  <li>
                     <strong class="text-nvidia-green">Audio quality:</strong>
                     Clear audio with minimal background noise yields better
                     results
                   </li>
                   <li>
-                    <strong class="text-nvidia-green">Speaker clarity:</strong>
+                    <strong class="text-nvidia-green">Speaking style:</strong>
                     Well-articulated speech is transcribed more accurately
-                  </li>
-                  <li>
-                    <strong class="text-nvidia-green"
-                      >Specialized terminology:</strong
-                    >
-                    Technical jargon may have varying accuracy depending on how
-                    common it is in the training data
                   </li>
                 </ul>
                 <p class="mt-3 text-gray-300">
-                  The large model can achieve accuracy rates comparable to human
-                  transcription in ideal conditions, while smaller models make
-                  more errors but still deliver usable results for most content.
+                  English-only models (.en) tend to perform better for English content, especially for the tiny and base models. The large model can achieve excellent accuracy in ideal conditions, while smaller models trade off some accuracy for faster processing.
                 </p>
               </div>
             </div>
@@ -1625,7 +1552,6 @@
         </div>
       </div>
     </section>
-
     <!-- Footer -->
     <footer class="bg-dark-900 border-t border-dark-500 pt-12 pb-6">
       <div class="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -1674,7 +1600,6 @@
               </a>
             </div>
           </div>
-
           <!-- Resources -->
           <div>
             <h3 class="text-lg font-bold text-white mb-4">Resources</h3>
@@ -1709,7 +1634,6 @@
               </li>
             </ul>
           </div>
-
           <!-- Navigation -->
           <div>
             <h3 class="text-lg font-bold text-white mb-4">Navigation</h3>
@@ -1749,7 +1673,6 @@
             </ul>
           </div>
         </div>
-
         <div
           class="pt-6 border-t border-dark-400 text-center text-gray-500 text-sm"
         >
@@ -1766,24 +1689,20 @@
         </div>
       </div>
     </footer>
-
     <!-- JavaScript -->
     <script>
       document.addEventListener("DOMContentLoaded", function () {
         // Mobile menu toggle
         const mobileMenuButton = document.getElementById("mobile-menu-button");
         const mobileMenu = document.getElementById("mobile-menu");
-
         if (mobileMenuButton && mobileMenu) {
           mobileMenuButton.addEventListener("click", function () {
             mobileMenu.classList.toggle("hidden");
           });
         }
-
         // Options panel toggle
         const toggleOptions = document.getElementById("toggle-options");
         const optionsPanel = document.getElementById("options-panel");
-
         if (toggleOptions && optionsPanel) {
           toggleOptions.addEventListener("click", function () {
             if (optionsPanel.classList.contains("hidden")) {
@@ -1797,15 +1716,12 @@
             }
           });
         }
-
         // Accordion functionality
         const accordionHeaders = document.querySelectorAll(".accordion-header");
-
         accordionHeaders.forEach((header) => {
           header.addEventListener("click", function () {
             const content = this.nextElementSibling;
             const icon = this.querySelector("i");
-
             // Close all other accordions
             accordionHeaders.forEach((otherHeader) => {
               if (otherHeader !== header) {
@@ -1815,7 +1731,6 @@
                 otherIcon.classList.remove("transform", "rotate-180");
               }
             });
-
             // Toggle current accordion
             if (content.style.maxHeight) {
               content.style.maxHeight = null;
@@ -1826,19 +1741,16 @@
             }
           });
         });
-
         // Open first FAQ by default
         if (accordionHeaders.length > 0) {
           const firstHeader = accordionHeaders[0];
           const firstContent = firstHeader.nextElementSibling;
           const firstIcon = firstHeader.querySelector("i");
-
           firstContent.style.maxHeight = firstContent.scrollHeight + "px";
           firstIcon.classList.add("transform", "rotate-180");
         }
       });
     </script>
-
     <!-- Main JavaScript -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
   </body>

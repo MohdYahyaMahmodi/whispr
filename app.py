@@ -5,7 +5,7 @@ A web-based interface for OpenAI's Whisper speech recognition model.
 Features:
 - Real-time progress tracking with accurate progress bars
 - GPU acceleration support with automatic fallback to CPU
-- Multiple Whisper model sizes (tiny to large)
+- Multiple Whisper model sizes (tiny to turbo)
 - Support for multiple audio/video formats
 - Private local processing (no data sent to external servers)
 - Export to TXT and SRT formats
@@ -38,7 +38,6 @@ from flask import Flask, render_template, request, jsonify, send_file
 # ================================
 # Application Configuration
 # ================================
-
 app = Flask(__name__, static_folder='static')
 
 # Directory paths
@@ -61,39 +60,60 @@ task_lock = threading.Lock()  # Thread-safe task access
 # ================================
 # Whisper Model Configurations
 # ================================
-
 WHISPER_MODELS = {
     'tiny': {
-        'description': 'Fastest model (~32x realtime), lowest accuracy',
-        'size_mb': 75,
+        'description': 'Fastest model (~10x realtime), 39M parameters',
+        'parameters': '39M',
+        'size_mb': 39,  # Actual model size
+        'vram_gb': 1,
+        'relative_speed': 10,
         'download_url': 'https://openaipublic.azureedge.net/main/whisper/models/d3dd57d32accea0b295c96e26691aa14d8822fac7d9d27d5dc00b4ca2826dd03/tiny.en.pt'
     },
     'base': {
-        'description': 'Fast (~16x realtime), decent accuracy',
-        'size_mb': 142,
+        'description': 'Fast model (~7x realtime), 74M parameters',
+        'parameters': '74M',
+        'size_mb': 74,
+        'vram_gb': 1,
+        'relative_speed': 7,
         'download_url': 'https://openaipublic.azureedge.net/main/whisper/models/4d70c13eb6c0d487dab0f48ecb2806ef7c5431dae0f4d1ea46e3d5119a9f60c7/base.en.pt'
     },
     'small': {
-        'description': 'Good balance (~6x realtime), good accuracy',
-        'size_mb': 466,
-        'download_url': 'https://openaipublic.azureedge.net/main/whisper/models/55356645c2b361a969dfd0ef2c5a50d530afd8105a9f54e8e8c8c5cc79a6ef98/small.en.pt'
+        'description': 'Balanced model (~4x realtime), 244M parameters',
+        'parameters': '244M',
+        'size_mb': 244,
+        'vram_gb': 2,
+        'relative_speed': 4,
+        'download_url': 'https://openaipublic.azureedge.net/main/whisper/models/55356645c2b361a969dfd0ef2c5a50d530afd8105a9f54e8e8c5cc79a6ef98/small.en.pt'
     },
     'medium': {
-        'description': 'Slower (~2x realtime), high accuracy',
-        'size_mb': 1500,
+        'description': 'High accuracy model (~2x realtime), 769M parameters',
+        'parameters': '769M',
+        'size_mb': 769,
+        'vram_gb': 5,
+        'relative_speed': 2,
         'download_url': 'https://openaipublic.azureedge.net/main/whisper/models/345ae4da62f9b3d59415adc60127b97c714f32e89e936602e85993674d08dcb1/medium.en.pt'
     },
     'large': {
-        'description': 'Slowest (1x realtime), highest accuracy',
-        'size_mb': 2900,
+        'description': 'Highest accuracy model (1x realtime), 1550M parameters',
+        'parameters': '1550M',
+        'size_mb': 1550,
+        'vram_gb': 10,
+        'relative_speed': 1,
         'download_url': 'https://openaipublic.azureedge.net/main/whisper/models/81f7c96c852ee8fc832187b0132e569d6c3065a3252ed18e56effd0b6a73e524/large-v3.pt'
+    },
+    'turbo': {
+        'description': 'Optimized large-v3 model (~8x realtime), 809M parameters',
+        'parameters': '809M',
+        'size_mb': 809,
+        'vram_gb': 6,
+        'relative_speed': 8,
+        'download_url': 'https://openaipublic.azureedge.net/main/whisper/models/aff26ae408abcba5fbf8813c21e62b0941638aa33c9e52e05b678c8c4d675b2/large-v3-turbo.pt'
     }
 }
 
 # ================================
 # System Detection & Hardware Info
 # ================================
-
 def log_with_timestamp(message, level="INFO"):
     """Print log message with timestamp formatting."""
     timestamp = datetime.now().strftime("%H:%M:%S")
@@ -208,6 +228,7 @@ if torch.cuda.is_available():
     log_with_timestamp(f"CUDA version: {torch.version.cuda}")
     log_with_timestamp(f"GPU device name: {torch.cuda.get_device_name(0)}")
     log_with_timestamp(f"GPU device count: {torch.cuda.device_count()}")
+    log_with_timestamp(f"GPU memory: {gpu_info['memory'] / (1024**3):.2f} GB")
 else:
     log_with_timestamp("CUDA is not available. Using CPU mode (slower).")
 log_with_timestamp("===========================")
@@ -215,7 +236,6 @@ log_with_timestamp("===========================")
 # ================================
 # Utility Functions
 # ================================
-
 def allowed_file(filename):
     """Check if the uploaded file has an allowed extension."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -238,9 +258,13 @@ def update_task_progress(task_id, progress, status, stage_info, detailed_status,
     """
     Thread-safe function to update transcription task progress.
     Calculates time estimates and logs progress messages.
+    FIXED: Ensure progress is always a valid number between 0 and 100.
     """
     with task_lock:
         if task_id in transcription_tasks:
+            # Ensure progress is a valid number between 0 and 100
+            progress = max(0, min(100, float(progress) if progress is not None else 0))
+            
             # Update basic progress information
             transcription_tasks[task_id]['progress'] = progress
             transcription_tasks[task_id]['status'] = status
@@ -272,11 +296,11 @@ def format_time(seconds):
 # ================================
 # Model Download Functions
 # ================================
-
 def download_model_with_progress(model_name, task_id):
     """
     Download Whisper model from OpenAI with real-time progress tracking.
     Skips download if model is already cached locally.
+    FIXED: Better progress tracking and error handling.
     """
     model_path = os.path.join(WHISPER_CACHE_DIR, f"{model_name}.pt")
     
@@ -284,7 +308,7 @@ def download_model_with_progress(model_name, task_id):
     if os.path.exists(model_path):
         log_with_timestamp(f"Model {model_name} already cached")
         update_task_progress(
-            task_id, 25, 'model_ready', 'Model ready', 
+            task_id, 15, 'model_ready', 'Model ready', 
             f"Model {model_name} is already downloaded",
             f"Model {model_name} found in cache, skipping download"
         )
@@ -296,7 +320,7 @@ def download_model_with_progress(model_name, task_id):
         
         log_with_timestamp(f"Starting download of {model_name} model ({expected_size / (1024*1024):.0f} MB)")
         update_task_progress(
-            task_id, 10, 'downloading_model', 'Downloading model', 
+            task_id, 5, 'downloading_model', 'Downloading model', 
             f"Starting download of {model_name} model",
             f"Downloading {model_name} model from OpenAI servers"
         )
@@ -309,7 +333,7 @@ def download_model_with_progress(model_name, task_id):
         response = requests.get(download_url, stream=True)
         total_size = int(response.headers.get('content-length', expected_size))
         
-        # Initialize download tracking
+        # Initialize download tracking with valid numbers
         with task_lock:
             if task_id in transcription_tasks:
                 transcription_tasks[task_id]['total_size'] = total_size
@@ -319,6 +343,7 @@ def download_model_with_progress(model_name, task_id):
         downloaded = 0
         chunk_size = 8192
         last_log_time = time.time()
+        last_progress_update = time.time()
         
         with open(temp_path, 'wb') as f:
             for chunk in response.iter_content(chunk_size=chunk_size):
@@ -326,19 +351,21 @@ def download_model_with_progress(model_name, task_id):
                     f.write(chunk)
                     downloaded += len(chunk)
                     
-                    # Calculate progress (10% to 25% of total progress)
+                    # Calculate progress (5% to 15% of total progress)
                     download_progress = min(downloaded / total_size, 1.0)
-                    total_progress = 10 + (download_progress * 15)
+                    total_progress = 5 + (download_progress * 10)
                     
-                    # Update task progress
-                    with task_lock:
-                        if task_id in transcription_tasks:
-                            transcription_tasks[task_id]['progress'] = total_progress
-                            transcription_tasks[task_id]['downloaded'] = downloaded
-                            transcription_tasks[task_id]['detailed_status'] = f"Downloaded: {downloaded/(1024*1024):.1f} MB / {total_size/(1024*1024):.1f} MB"
-                    
-                    # Periodic logging to console
+                    # Update task progress every 100ms to avoid overwhelming the client
                     current_time = time.time()
+                    if current_time - last_progress_update > 0.1:
+                        with task_lock:
+                            if task_id in transcription_tasks:
+                                transcription_tasks[task_id]['progress'] = total_progress
+                                transcription_tasks[task_id]['downloaded'] = downloaded
+                                transcription_tasks[task_id]['detailed_status'] = f"Downloaded: {downloaded/(1024*1024):.1f} MB / {total_size/(1024*1024):.1f} MB"
+                        last_progress_update = current_time
+                    
+                    # Periodic logging to console (every 2 seconds)
                     if current_time - last_log_time > 2.0:
                         log_with_timestamp(f"Download progress: {downloaded/(1024*1024):.1f} / {total_size/(1024*1024):.1f} MB ({download_progress*100:.1f}%)")
                         last_log_time = current_time
@@ -349,7 +376,7 @@ def download_model_with_progress(model_name, task_id):
         
         log_with_timestamp(f"Model {model_name} downloaded successfully")
         update_task_progress(
-            task_id, 25, 'model_ready', 'Model downloaded', 
+            task_id, 15, 'model_ready', 'Model downloaded', 
             f"Model {model_name} downloaded and ready",
             f"Model {model_name} download completed successfully"
         )
@@ -371,25 +398,26 @@ def download_model_with_progress(model_name, task_id):
 # ================================
 # Transcription Functions
 # ================================
-
 def monitor_transcription_progress(task_id, audio_duration, start_time):
     """
     Monitor transcription progress in separate thread.
     Estimates progress based on model speed and elapsed time.
+    FIXED: Better progress calculation and smoother updates.
     """
     last_update = time.time()
     
-    # Model speed estimates (realtime multipliers)
+    # Updated model speed estimates (realtime multipliers)
     model_speeds = {
-        'tiny': 32,   # ~32x realtime
-        'base': 16,   # ~16x realtime  
-        'small': 6,   # ~6x realtime
-        'medium': 2,  # ~2x realtime
-        'large': 1    # ~1x realtime
+        'tiny': 10,     # ~10x realtime
+        'base': 7,      # ~7x realtime  
+        'small': 4,     # ~4x realtime
+        'medium': 2,    # ~2x realtime
+        'large': 1,     # ~1x realtime
+        'turbo': 8      # ~8x realtime
     }
     
     while True:
-        time.sleep(1)  # Update every second
+        time.sleep(0.5)  # Update every 500ms for smoother progress
         
         current_time = time.time()
         elapsed = current_time - start_time
@@ -404,50 +432,60 @@ def monitor_transcription_progress(task_id, audio_duration, start_time):
             
             # Calculate expected progress
             model_name = task['model']
-            expected_speed = model_speeds.get(model_name, 8)
+            expected_speed = model_speeds.get(model_name, 4)
             
             # Adjust for CPU vs GPU (CPU is ~3x slower)
             if not gpu_info['available']:
                 expected_speed = expected_speed / 3
             
-            # Calculate progress ratio
+            # Calculate progress ratio with some smoothing
             expected_duration = audio_duration / expected_speed
             progress_ratio = min(elapsed / expected_duration, 0.95)  # Cap at 95%
             
-            # Map to UI progress range (35% - 90%)
-            ui_progress = 35 + (progress_ratio * 55)
-            transcription_tasks[task_id]['progress'] = ui_progress
+            # Map to UI progress range (25% - 95%) - leaving room for final processing
+            ui_progress = 25 + (progress_ratio * 70)
             
-            # Calculate time remaining
-            if progress_ratio > 0.1:
-                estimated_total = elapsed / progress_ratio
-                remaining = max(0, estimated_total - elapsed)
-                transcription_tasks[task_id]['time_remaining'] = remaining
+            # Only update if progress has increased by at least 1%
+            current_progress = task.get('progress', 0)
+            if ui_progress > current_progress + 1:
+                transcription_tasks[task_id]['progress'] = ui_progress
                 
-                # Update detailed status with time estimate
-                if remaining > 60:
-                    time_str = f"{int(remaining/60)}m {int(remaining%60)}s"
-                else:
-                    time_str = f"{int(remaining)}s"
-                
-                transcription_tasks[task_id]['detailed_status'] = f"Transcribing: {progress_ratio*100:.0f}% complete (Est. {time_str} remaining)"
+                # Calculate time remaining
+                if progress_ratio > 0.1:
+                    estimated_total = elapsed / progress_ratio
+                    remaining = max(0, estimated_total - elapsed)
+                    transcription_tasks[task_id]['time_remaining'] = remaining
+                    
+                    # Update detailed status with time estimate
+                    if remaining > 60:
+                        time_str = f"{int(remaining/60)}m {int(remaining%60)}s"
+                    else:
+                        time_str = f"{int(remaining)}s"
+                    
+                    transcription_tasks[task_id]['detailed_status'] = f"Transcribing: {progress_ratio*100:.0f}% complete (Est. {time_str} remaining)"
         
-        # Periodic console logging
+        # Periodic console logging (every 5 seconds)
         if current_time - last_update > 5:
-            log_with_timestamp(f"Transcription progress: {ui_progress:.0f}% ({elapsed:.0f}s elapsed)")
-            last_update = current_time
+            with task_lock:
+                if task_id in transcription_tasks:
+                    current_progress = transcription_tasks[task_id].get('progress', 0)
+                    log_with_timestamp(f"Transcription progress: {current_progress:.0f}% ({elapsed:.0f}s elapsed)")
+                    last_update = current_time
 
-def transcribe_file(file_path, model_name, task_id):
+def transcribe_file(file_path, model_name, task_id, transcription_options=None):
     """
     Main transcription function that processes audio/video files.
     Handles the complete transcription pipeline with progress tracking.
+    FIXED: Better progress management and error handling.
     """
+    transcription_options = transcription_options or {}
+    
     try:
         log_with_timestamp(f"Starting transcription process for {os.path.basename(file_path)}")
         
-        # Step 1: Analyze audio file (5% - 10%)
+        # Step 1: Analyze audio file (0% - 5%)
         update_task_progress(
-            task_id, 7, 'analyzing', 'Analyzing audio', 
+            task_id, 2, 'analyzing', 'Analyzing audio', 
             "Analyzing audio file properties",
             "Analyzing audio file to determine duration and format"
         )
@@ -459,14 +497,14 @@ def transcribe_file(file_path, model_name, task_id):
         
         log_with_timestamp(f"Audio duration: {audio_duration:.1f} seconds ({audio_duration/60:.1f} minutes)")
         
-        # Step 2: Download model if needed (10% - 25%)
+        # Step 2: Download model if needed (5% - 15%)
         if not download_model_with_progress(model_name, task_id):
             return
         
-        # Step 3: Load model into memory (25% - 35%)
+        # Step 3: Load model into memory (15% - 25%)
         log_with_timestamp(f"Loading {model_name} model into memory")
         update_task_progress(
-            task_id, 30, 'loading_model', 'Loading model', 
+            task_id, 20, 'loading_model', 'Loading model', 
             f"Loading {model_name} model into memory",
             f"Loading {model_name} model on {'GPU' if gpu_info['available'] else 'CPU'}"
         )
@@ -475,9 +513,9 @@ def transcribe_file(file_path, model_name, task_id):
         model = whisper.load_model(model_name, device=device, download_root=WHISPER_CACHE_DIR)
         log_with_timestamp(f"Model loaded on {device.upper()}")
         
-        # Step 4: Start transcription (35% - 90%)
+        # Step 4: Start transcription (25% - 95%)
         update_task_progress(
-            task_id, 35, 'transcribing', 'Transcribing audio', 
+            task_id, 25, 'transcribing', 'Transcribing audio', 
             f"Starting transcription on {device.upper()}",
             f"Beginning audio transcription using {model_name} model"
         )
@@ -490,25 +528,33 @@ def transcribe_file(file_path, model_name, task_id):
         
         transcription_thread = threading.Thread(
             target=monitor_transcription_progress,
-            args=(task_id, audio_duration, processing_start_time)
+            args=(task_id, audio_duration, processing_start_time),
+            daemon=True
         )
-        transcription_thread.daemon = True
         transcription_thread.start()
         
+        # Prepare transcription options
+        transcribe_args = {
+            'fp16': (device == "cuda"),
+            'verbose': True
+        }
+        
+        # Add advanced options if provided
+        if transcription_options.get('multilingual'):
+            transcribe_args['language'] = None  # Auto-detect language
+        if transcription_options.get('word_timestamps'):
+            transcribe_args['word_timestamps'] = True
+        
         # Perform actual transcription
-        result = model.transcribe(
-            file_path,
-            fp16=(device == "cuda"),
-            verbose=True
-        )
+        result = model.transcribe(file_path, **transcribe_args)
         
         processing_time = time.time() - processing_start_time
         log_with_timestamp(f"Transcription completed in {processing_time:.1f} seconds")
         log_with_timestamp(f"Processing speed: {audio_duration/processing_time:.1f}x realtime")
         
-        # Step 5: Generate text file (90% - 95%)
+        # Step 5: Generate text file (95% - 97%)
         update_task_progress(
-            task_id, 90, 'generating_files', 'Creating transcript', 
+            task_id, 96, 'generating_files', 'Creating transcript', 
             "Generating text transcript file",
             "Creating .txt transcript file"
         )
@@ -518,9 +564,9 @@ def transcribe_file(file_path, model_name, task_id):
             f.write(result["text"])
         log_with_timestamp(f"Text transcript saved: {txt_filename}")
         
-        # Step 6: Generate SRT subtitle file (95% - 100%)
+        # Step 6: Generate SRT subtitle file (97% - 99%)
         update_task_progress(
-            task_id, 95, 'generating_files', 'Creating subtitles', 
+            task_id, 98, 'generating_files', 'Creating subtitles', 
             "Generating SRT subtitle file",
             "Creating .srt subtitle file with timestamps"
         )
@@ -579,7 +625,6 @@ def transcribe_file(file_path, model_name, task_id):
 # ================================
 # Flask Route Handlers
 # ================================
-
 @app.route('/')
 def index():
     """Serve the main web interface."""
@@ -610,6 +655,13 @@ def upload_file():
     if model_name not in WHISPER_MODELS:
         return jsonify({'error': f'Invalid model: {model_name}'}), 400
     
+    # Get advanced options
+    transcription_options = {
+        'multilingual': request.form.get('multilingual', 'false').lower() == 'true',
+        'word_timestamps': request.form.get('word_timestamps', 'false').lower() == 'true',
+        'speaker_detection': request.form.get('speaker_detection', 'false').lower() == 'true'
+    }
+    
     # Save uploaded file
     filename = os.path.join(UPLOAD_FOLDER, f"{task_id}_{file.filename}")
     try:
@@ -621,8 +673,9 @@ def upload_file():
     log_with_timestamp(f"File uploaded: {file.filename} ({file_size / (1024*1024):.1f} MB)")
     log_with_timestamp(f"Task ID: {task_id}")
     log_with_timestamp(f"Selected model: {model_name}")
+    log_with_timestamp(f"Options: {transcription_options}")
     
-    # Initialize task tracking
+    # Initialize task tracking with better defaults
     with task_lock:
         transcription_tasks[task_id] = {
             'status': 'uploaded',
@@ -630,7 +683,7 @@ def upload_file():
             'file_name': file.filename,
             'file_size': file_size,
             'model': model_name,
-            'progress': 5,
+            'progress': 0,  # Start at 0%
             'transcript_txt': None,
             'transcript_srt': None,
             'error': None,
@@ -640,13 +693,21 @@ def upload_file():
             'detailed_status': f"File {file.filename} uploaded successfully",
             'console_logs': [],
             'audio_duration': None,
-            'processing_start_time': None
+            'processing_start_time': None,
+            'downloaded': 0,
+            'total_size': 0,
+            'time_remaining': None,
+            'estimated_total': None,
+            'transcription_options': transcription_options
         }
     
     # Start transcription in background thread
     try:
-        thread = threading.Thread(target=transcribe_file, args=(filename, model_name, task_id))
-        thread.daemon = True
+        thread = threading.Thread(
+            target=transcribe_file, 
+            args=(filename, model_name, task_id, transcription_options),
+            daemon=True
+        )
         thread.start()
         time.sleep(0.1)  # Ensure thread starts
         
@@ -655,7 +716,8 @@ def upload_file():
             'task_id': task_id,
             'file_name': file.filename,
             'file_size': file_size,
-            'model': model_name
+            'model': model_name,
+            'options': transcription_options
         }), 200
     except Exception as e:
         log_with_timestamp(f"Error starting transcription: {str(e)}", "ERROR")
@@ -670,10 +732,10 @@ def get_status(task_id):
         
         task = transcription_tasks[task_id].copy()
     
-    # Build comprehensive status response
+    # Build comprehensive status response with proper data validation
     response = {
         'status': task['status'],
-        'progress': task['progress'],
+        'progress': max(0, min(100, task['progress'])),  # Ensure valid progress
         'error': task.get('error'),
         'device_type': task.get('device_type', 'unknown'),
         'stage_info': task.get('stage_info', ''),
@@ -687,15 +749,20 @@ def get_status(task_id):
     # Add timing information if available
     if 'processing_time' in task:
         response['processing_time'] = task['processing_time']
-    if 'time_remaining' in task:
-        response['time_remaining'] = task['time_remaining']
-    if 'estimated_total' in task:
+    if 'time_remaining' in task and task['time_remaining'] is not None:
+        response['time_remaining'] = max(0, task['time_remaining'])
+    if 'estimated_total' in task and task['estimated_total'] is not None:
         response['estimated_total'] = task['estimated_total']
     
-    # Add download progress for model downloads
+    # Add download progress for model downloads - ensure valid numbers
     if task['status'] == 'downloading_model':
-        response['downloaded'] = task.get('downloaded', 0)
-        response['total_size'] = task.get('total_size', 0)
+        downloaded = task.get('downloaded', 0)
+        total_size = task.get('total_size', 0)
+        
+        # Only include if we have valid data
+        if downloaded >= 0 and total_size > 0:
+            response['downloaded'] = downloaded
+            response['total_size'] = total_size
     
     return jsonify(response), 200
 
@@ -729,7 +796,8 @@ def get_system_info():
         'cpu_info': updated_cpu_info,
         'ram': updated_ram,
         'pytorch_version': torch.__version__,
-        'cached_models': cached_models
+        'cached_models': cached_models,
+        'whisper_models': WHISPER_MODELS
     }), 200
 
 @app.route('/transcript/<task_id>', methods=['GET'])
@@ -813,7 +881,6 @@ def get_model_info():
 # ================================
 # Application Entry Point
 # ================================
-
 if __name__ == '__main__':
     # Check for required dependencies
     try:
@@ -823,4 +890,5 @@ if __name__ == '__main__':
         sys.exit(1)
     
     log_with_timestamp("Starting Whispr Transcription Studio...")
+    log_with_timestamp(f"Available models: {', '.join(WHISPER_MODELS.keys())}")
     app.run(debug=True, host='0.0.0.0', port=5000)
