@@ -75,7 +75,7 @@
 
 <!-- Additional screenshots -->
 
-# <img src="fullpage.png" alt="Full Page Overview" style="vertical-align: middle;">
+# <img src="fullPage.png" alt="Full Page Overview" style="vertical-align: middle;">
 
 </details>
 
